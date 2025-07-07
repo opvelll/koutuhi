@@ -1,5 +1,6 @@
 import PySimpleGUI as sg
 from Process_pymupdf import extract_workday_from_salary_pdf_pymupdf
+from Process_pymupdf_simple import extract_workday_from_salary_pdf_pymupdf_simple
 from Suica import extract_suica_history, convert_dataframe, add_year, extract_date_from_pdf
 
 # レイアウトの定義
@@ -11,7 +12,7 @@ layout = [
     [sg.Input(enable_events=True, key="-SUICA-"),
      sg.FileBrowse(key="suica_file")],
     [sg.Column([[sg.Table(values=[], key="workday_table", headings=[
-                "日付", "金額", "場所"], auto_size_columns=False, col_widths=[10, 10, 40], num_rows=15, justification="left", row_height=15)]], scrollable=True)],
+                "日付", "金額", "得意先", "場所"], auto_size_columns=False, col_widths=[10, 10, 30, 40], num_rows=15, justification="left", row_height=15)]], scrollable=True)],
     [sg.Column([[sg.Table(values=[], key="suica_table", headings=[
                 "月", "日", "種別", "利用駅", "種別", "利用駅", "残高", "入金・利用額", "年"], auto_size_columns=False, col_widths=[5, 5, 10, 25, 10, 25, 10, 10, 10], num_rows=15, justification="left", row_height=15)]], scrollable=True)],
     [sg.Button("とじる")]
@@ -26,7 +27,9 @@ while True:
     if event in (None, "とじる"):
         break
     if event == "-SALARY-":
-        value = extract_workday_from_salary_pdf_pymupdf(values["salary_file"])
+        # 簡易版の抽出関数を使用
+        value = extract_workday_from_salary_pdf_pymupdf_simple(
+            values["salary_file"])
         window["workday_table"].update(values=value)
     if event == "-SUICA-":
         df = extract_suica_history(values["suica_file"])
