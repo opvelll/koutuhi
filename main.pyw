@@ -10,11 +10,32 @@ layout = [
     [sg.Text("Suica利用履歴ファイルを選択してください")],
     [sg.Input(enable_events=True, key="-SUICA-"),
      sg.FileBrowse(key="suica_file")],
-    [sg.Column([[sg.Table(values=[], key="workday_table", headings=[
-                "日付", "金額", "得意先", "場所"], auto_size_columns=False, col_widths=[10, 10, 30, 40], num_rows=15, justification="left", row_height=15)]], scrollable=True)],
-    [sg.Column([[sg.Table(values=[], key="suica_table", headings=[
-                '日付', '種別1', '利用駅1', '種別2', '利用駅2', '支払額', '残額'], auto_size_columns=False, col_widths=[10, 10, 25, 10, 25, 10, 10], num_rows=15, justification="left", row_height=15)]], scrollable=True)],
-    [sg.Button("とじる")]
+    [sg.Pane(
+        [
+            sg.Column(
+                [
+                    [sg.Text("給与明細")],
+                    [sg.Table(values=[], key="workday_table", headings=["日付", "曜日", "得意先名", "勤務場所", "通常残業", "深夜残業", "合計"],
+                              auto_size_columns=False,
+                              justification="left",
+                              expand_x=True, expand_y=True)]
+                ],
+                expand_x=True, expand_y=True
+            ),
+            sg.Column(
+                [
+                    [sg.Text("Suica利用履歴")],
+                    [sg.Table(values=[], key="suica_table", headings=['日付', '種別1', '利用駅1', '種別2', '利用駅2', '支払額', '残額'],
+                              auto_size_columns=False,
+                              justification="left",
+                              expand_x=True, expand_y=True)]
+                ],
+                expand_x=True, expand_y=True
+            )
+        ],
+        orientation='v', expand_x=True, expand_y=True, key='-PANE-'
+    )],
+    [sg.Button("とじる"), sg.Sizegrip()]
 ]
 
 # ウィンドウの作成
