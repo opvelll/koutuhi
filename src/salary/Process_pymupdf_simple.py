@@ -9,6 +9,8 @@ def extract_workday_from_salary_pdf_pymupdf_simple(path):
     texts = [page.get_text() for page in doc]
     content = "\n".join(texts)
 
+    # print(content)
+
     # 日付を起点に仕事履歴を抽出し、二次元リストにする
     lines = content.splitlines()
     history = []
