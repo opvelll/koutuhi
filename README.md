@@ -20,28 +20,40 @@ GUIアプリケーションを通じて、ユーザーは必要なPDFファイ�
 
 ```
 .
-├── main.pyw          # GUIアプリケーションのメインファイル
-├── Process.py        # 給与明細PDFの処理モジュール
-├── Suica.py          # Suica利用履歴PDFの処理モジュール
-├── requirements.txt  # 依存ライブラリリスト
-├── sample/           # サンプルPDF・Excelファイル
-└── README.md         # このファイル
+├── main.pyw                       # GUIアプリケーションのエントリポイント
+├── analyze_pdf.py                 # PDF解析用スクリプト
+├── requirements.txt               # 依存ライブラリリスト
+├── test.ipynb                     # テスト用Jupyter Notebook
+├── test3.py                       # テスト用スクリプト
+├── sample/                        # サンプルPDF・Excelファイル
+├── src/
+│   ├── salary/
+│   │   ├── Process.py                    # 給与明細解析共通モジュール
+│   │   ├── Process_pymupdf_simple.py     # PyMuPDF簡易版解析
+│   │   └── Process_pymupdf.py            # PyMuPDF詳細版解析
+│   └── suica/
+│       ├── Suica.py                      # Suica履歴共通インターフェース
+│       ├── Suica_pdfplumber.py           # pdfplumber解析
+│       └── Suica_pymupdf.py              # PyMuPDF解析
+└── tests/                         # テストコード
 ```
 
 ## 設計
 
 本アプリケーションは、以下の3つの主要モジュールから構成されています。
 
-1.  **`main.pyw` (GUI層):**
-    -   `PySimpleGUI`を使用してユーザーインターフェースを構築。
-    -   ユーザーからのファイル選択イベントを受け取り、各処理モジュールを呼び出す。
-    -   処理結果をテーブル形式で画面に表示する。
+1. **`main.pyw` (GUI層):**
+   - `PySimpleGUI`を使用してユーザーインターフェースを構築。
+   - ユーザーからのファイル選択イベントを受け取り、`src.salary`、`src.suica`内の抽出関数を呼び出す。
+   - 処理結果をテーブル形式で画面に表示する。
 
-2.  **`Process.py` (給与明細処理層):**
-    -   給与明細PDFを`tabula-py`で解析し、勤務日と勤務地の情報を抽出する。
+2. **`src/salary` (給与明細処理層):**
+   - `Process.py` に共通インターフェースを定義。
+   - `Process_pymupdf_simple.py`、`Process_pymupdf.py`でPyMuPDFを用いた抽出ロジックを実装。
 
-3.  **`Suica.py` (Suica履歴処理層):**
-    -   Suica利用履歴PDFを`tabula-py`と`pdfminer.six`で解析し、日付、利用駅、金額などの情報を抽出する。
+3. **`src/suica` (Suica履歴処理層):**
+   - `Suica.py` に共通インターフェースを定義。
+   - `Suica_pdfplumber.py`で`pdfplumber`、`Suica_pymupdf.py`でPyMuPDFを用いた抽出ロジックを実装。
 
 ## 機能（できること）
 
