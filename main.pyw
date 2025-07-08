@@ -1,6 +1,8 @@
 import PySimpleGUI as sg
+
 from src.salary.Process_pymupdf_simple import extract_workday_from_salary_pdf_pymupdf_simple
 from src.suica.Suica_pymupdf import extract_suica_history_pymupdf
+
 
 # レイアウトの定義
 layout = [
