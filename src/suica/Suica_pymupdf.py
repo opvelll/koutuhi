@@ -2,6 +2,7 @@ import fitz  # PyMuPDF
 import pandas as pd
 import os
 import re
+from date_extractor import extract_history_date_pymupdf
 
 
 def parse_suica_history_text(lines):
@@ -103,48 +104,40 @@ def extract_suica_history_pymupdf(pdf_path):
     return df
 
 
-def extract_history_date_pymupdf(pdf_path):
+def add_year_to_dates(df, report_date):
     """
-    PDF全体のテキストから履歴出力日付を抽出して返します。"""
-    try:
-        doc = fitz.open(pdf_path)
-    except Exception as e:
-        print(f"Error opening PDF: {e}")
-        return ''
-    full_text = ''
-    for page in doc:
-        full_text += page.get_text()
-    # YYYY/MM/DD形式を検索
-    match = re.search(r'(\d{4}/\d{1,2}/\d{1,2})', full_text)
-    if match:
-        return match.group(1)
-    # 日本語表記 YYYY年MM月DD日形式を検索
-    match = re.search(r'(\d{4})年(\d{1,2})月(\d{1,2})日', full_text)
-    if match:
-        y, m, d = match.groups()
-        return f"{y}/{int(m):02d}/{int(d):02d}"
-    return ''
-
-
-def transform_suica_history(df):
+    DataFrame の '日付' 列に年情報を付加します。
+    report_date: 'YYYY/MM/DD' 形式の文字列
     """
-    Suica履歴DataFrameを日付ごとの経路と支払額テーブルに変換します。
-    """
-    if df.empty:
-        return pd.DataFrame(columns=['日付', '経路', '支払額'])
-    df2 = df.copy()
-    # 経路文字列を生成
+    # report_date の年と月を取得
+    rep_year, rep_mon, _ = map(int, report_date.split('/'))
+    df2 = df.copy().reset_index(drop=True)
+    # 年度を判定するための変数初期化
+    # 最初の行月が report_month より大きければ前年から開始
+    first_month = int(df2.loc[0, '日付'].split('/')[0])
+    current_year = rep_year - 1 if first_month > rep_mon else rep_year
+    prev_mon = first_month
+    years = []
+    # 各行を順に処理し、月が前行より小さくなったら翌年に切り替え
+    for date_str in df2['日付']:
+        mon = int(date_str.split('/')[0])
+        if mon < prev_mon:
+            current_year += 1
+        years.append(current_year)
+        prev_mon = mon
+    # 年情報を付与して整形
+    df2['日付'] = [f"{y}/{d}" for y, d in zip(years, df2['日付'])]
+    return df2
 
-    def make_route(row):
-        if row['利用駅2']:
-            return f"{row['種別1']}:{row['利用駅1']} -> {row['種別2']}:{row['利用駅2']}"
-        else:
-            return f"{row['種別1']}:{row['利用駅1']}"
-    df2['経路'] = df2.apply(make_route, axis=1)
-    result = df2[['日付', '経路', '支払額']]
-    return result
 
-
+# --- Extraction Result ---
+#         日付 種別1  利用駅1 種別2   利用駅2  支払額   残額
+# 2023/10/16   繰                     0 2494
+# 2023/10/18   入   竹ノ塚   出   東武押上 -261 2233
+# 2023/10/18   入  東武押上   出    竹ノ塚 -261 1972
+# 2023/10/24   入   竹ノ塚   出   地　入谷 -356 1616
+# 2023/10/24   入     地  入谷  出 竹ノ塚 -356 1260
+# 2023/10/25   入   竹ノ塚   出   地　入谷 -356  904
 if __name__ == '__main__':
     sample_pdf_path = os.path.join(
         "sample", "JE80F121120754077_20231016_20240115160118.pdf")
@@ -153,15 +146,18 @@ if __name__ == '__main__':
     if not os.path.exists(sample_pdf_path):
         print(f"Error: サンプルファイルが見つかりません: {sample_pdf_path}")
     else:
+        # 履歴出力日を抽出
+        report_date = extract_history_date_pymupdf(sample_pdf_path)
+        print(f"\n履歴出力日: {report_date}")
+        # 履歴データを抽出
         extracted_data = extract_suica_history_pymupdf(sample_pdf_path)
         if not extracted_data.empty:
-            try:
-                # UTF-8-SIGでCSVに保存し、Excelでの文字化けを防ぐ
-                extracted_data.to_csv(
-                    output_csv_path, index=False, encoding='utf-8-sig')
-                print(f"\n--- Extraction Successful ---")
-                print(f"Data has been saved to {output_csv_path}")
-            except Exception as e:
-                print(f"\nError saving to CSV: {e}")
+            # 結果をprintで表示
+            # print("\n--- Extraction Result ---")
+            # print(extracted_data.to_string(index=False))
+            # 年情報を追加して表示
+            dated_df = add_year_to_dates(extracted_data, report_date)
+            print("\n--- Extraction with Year ---")
+            print(dated_df.to_string(index=False))
         else:
             print("\nExtraction did not return any data or failed to parse.")
