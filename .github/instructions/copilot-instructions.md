@@ -8,7 +8,10 @@ GUIアプリケーションを通じて、ユーザーは必要なPDFファイ�
 
 ## 主な使用技術（技術スタック）
 
+- **OS:** Windows 11
+- **CLI:** PowerShell
 - **言語:** Python 3
+- **仮想環境:** venv
 - **GUI:** PySimpleGUI
 - **PDF解析:** tabula-py, pdfminer.six, PyMuPDF,pdfplumber , (検討中)
 - **データ操作:** pandas
