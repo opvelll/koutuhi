@@ -2,7 +2,7 @@ import fitz  # PyMuPDF
 import pandas as pd
 import os
 import re
-from date_extractor import extract_history_date_pymupdf
+from .date_extractor import extract_history_date_pymupdf
 
 
 def parse_suica_history_text(lines):
