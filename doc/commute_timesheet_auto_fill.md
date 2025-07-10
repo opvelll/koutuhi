@@ -64,8 +64,7 @@
 
 ### ① Suica 明細取り込み
 
-- **PDF** : `camelot.read_pdf(..., flavor="lattice")` で罫線テーブル抽出 → `pandas.DataFrame`
-- **HTML スクレイピング** : `requests + BeautifulSoup` で `<table>` 解析
+- **PDF** : `camelot.read_pdf(..., flavor="lattice")` で罫線テーブル抽出 → `pandas.DataFrame`または、`PyMuPDF`
 
 ### ② 突合ロジック
 
@@ -95,8 +94,7 @@ fare_df = suica_df.groupby('date')['fare'].sum()  # 日付毎に往復合計
 
 | 分類        | 推奨ライブラリ                                          | 補足                                             |
 | --------- | ------------------------------------------------ | ---------------------------------------------- |
-| PDF → 表   | **camelot**, tabula‑py, pdfplumber               | 罫線あり → lattice, 無し → stream + OCR(pytesseract) |
-| HTML 取得   | requests, BeautifulSoup4                         | ログインセッション要管理                                   |
+| PDF → 表   | **camelot**, tabula‑py, pdfplumber, PyMuPDF           | 罫線あり → lattice, 無し → stream + OCR(pytesseract) |
 | Excel I/O | **openpyxl**                                     | 書式保持。`pandas.to_excel()` は NG                  |
 | PDF 書出    | win32com (Windows), libreoffice (cross‑platform) | フォント埋込も可                                       |
 | 便利        | pandas, python‑dateutil                          | 集計／日付演算                                        |
@@ -182,7 +180,7 @@ if __name__ == '__main__':
 3. **月跨ぎ** : 末日が 30 行目以降に来るとテンプレートの余白に日付が残り、誤入力することがあるので month チェック必須。
 4. **定期券利用** : Suica 運賃が 0 円になるケース → `fare > 0` でフィルタ、または定期区間外日を別ロジックで加算。
 5. **会社ルール** : 手入力欄 (備考やハンコ欄) が後工程で必要なら自動入力しないか、マクロでポップアップ入力にする。
-
+6. **テンプレートはひと月ごと** エクセルテンプレートはひと月ごとのデータになる。
 ---
 
 ## 8 TODO / 次フェーズ
