@@ -25,8 +25,12 @@ GUIアプリケーションを通じて、ユーザーは必要なPDFファイ�
 └── README.md         # このファイル
 ```
 
+## Pythonファイル
+- mainを作り、ファイル単体で実行できるようにする。結果をprintで出力する。
+- printの実行結果をコメントで書いておく
+
 ## Agent Mode でのコマンドの実行
-なるべくpythonのコードを生成したあとは、実行して確認してください。
+pythonのコードを実行するときは、仮想環境で行う
 
 ```
 ./env/Scripts/python.exe hoge.py
