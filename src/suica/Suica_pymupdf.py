@@ -9,14 +9,15 @@ def parse_suica_history_text(lines):
     """
     再構築されたテキスト行のリストを、複数の正規表現を使って解析し、DataFrameに変換する。
     """
+    # 種別（入, 出, 繰, 現金, ＊入）を明示し、駅名に空白を含めても対応
     pattern_transport = re.compile(
         r"^(\d{1,2})\s+(\d{1,2})\s+"
-        r"(\S+)\s+"
-        r"(.+?)\s+"
-        r"(\S+)\s+"
-        r"(.+?)\s+"
-        r"(\\[\d,]+)\s+"
-        r"([+-][\d,]+)"
+        r"(＊入|幹入|幹出|特典|物販|バス等|オート|現金|購|精|定|繰|入|出)\s+"  # 種別1
+        r"(.+?)\s+"                     # 利用駅1
+        r"(＊入|幹入|幹出|特典|物販|バス等|オート|現金|購|精|定|繰|入|出)\s+"                  # 種別2
+        r"(.+?)\s+"                     # 利用駅2
+        r"(\\[\d,]+)\s+"             # 残額
+        r"([+-][\d,]+)"                # 支払額
     )
 
     pattern_other = re.compile(
@@ -156,5 +157,10 @@ if __name__ == '__main__':
             # 抽出結果をprintで表示
             print("\n--- Extraction Result ---")
             print(extracted_data.to_string(index=False))
+            # 10/24 の利用駅1と利用駅2を表示
+            subset = extracted_data[extracted_data['日付']
+                                    == '10/24'][['利用駅1', '利用駅2']]
+            print("\n10/24 の利用駅1, 利用駅2:")
+            print(subset.to_string(index=False))
         else:
             print("\nExtraction did not return any data or failed to parse.")
