@@ -5,6 +5,56 @@ import yaml
 from src.fill_timesheet import preview_suica_records, make_timesheets_from_records, load_defaults
 
 
+def prepare_display_data(df):
+    selected_rows = set()
+    disabled_rows = set()
+    display_data = []
+    for i, row in df.iterrows():
+        s1 = row.get('利用駅1')
+        s2 = row.get('利用駅2')
+        is_disabled = pd.isna(s1) or not str(
+            s1).strip() or pd.isna(s2) or not str(s2).strip()
+
+        if is_disabled:
+            disabled_rows.add(i)
+            selected_char = ''
+        else:
+            selected_rows.add(i)
+            selected_char = '✅'
+
+        display_data.append([
+            row['日付'].strftime('%Y-%m-%d'),
+            row.get('種別1', ''),
+            row.get('利用駅1', ''),
+            row.get('種別2', ''),
+            row.get('利用駅2', ''),
+            row.get('支払額', ''),
+            row.get('残額', ''),
+            selected_char
+        ])
+    return display_data, selected_rows, disabled_rows
+
+
+def resolve_outdir(raw_out):
+    if isinstance(raw_out, str) and raw_out.lower() == 'desktop':
+        return Path.home() / 'Desktop'
+    elif raw_out:
+        return Path(raw_out).expanduser()
+    else:
+        return None
+
+
+def toggle_selection(clicked_index, window, selected_rows):
+    current = window['-TABLE-'].get()
+    if clicked_index in selected_rows:
+        selected_rows.remove(clicked_index)
+        current[clicked_index][7] = ''
+    else:
+        selected_rows.add(clicked_index)
+        current[clicked_index][7] = '✅'
+    window['-TABLE-'].update(values=current)
+
+
 def main():
     sg.theme('LightGrey1')
     # Load default settings
@@ -65,33 +115,8 @@ def main():
 
             df = preview_suica_records(pdf_path)
 
-            selected_rows.clear()
-            disabled_rows.clear()
-            display_data = []
-
-            for i, row in df.iterrows():
-                s1 = row.get('利用駅1')
-                s2 = row.get('利用駅2')
-                is_disabled = pd.isna(s1) or not str(
-                    s1).strip() or pd.isna(s2) or not str(s2).strip()
-
-                if is_disabled:
-                    disabled_rows.add(i)
-                    selected_char = ''
-                else:
-                    selected_rows.add(i)
-                    selected_char = '✅'
-
-                display_data.append([
-                    row['日付'].strftime('%Y-%m-%d'),
-                    row.get('種別1', ''),
-                    row.get('利用駅1', ''),
-                    row.get('種別2', ''),
-                    row.get('利用駅2', ''),
-                    row.get('支払額', ''),
-                    row.get('残額', ''),
-                    selected_char
-                ])
+            display_data, selected_rows, disabled_rows = prepare_display_data(
+                df)
 
             window['-TABLE-'].update(values=display_data)
 
@@ -101,16 +126,7 @@ def main():
             if clicked_row_index in disabled_rows:
                 continue  # 無効な行はクリックを無視
 
-            current_values = window['-TABLE-'].get()
-
-            if clicked_row_index in selected_rows:
-                selected_rows.remove(clicked_row_index)
-                current_values[clicked_row_index][7] = ''
-            else:
-                selected_rows.add(clicked_row_index)
-                current_values[clicked_row_index][7] = '✅'
-
-            window['-TABLE-'].update(values=current_values)
+            toggle_selection(clicked_row_index, window, selected_rows)
 
         if event == '-GENERATE-':
             if df is None:
@@ -126,12 +142,7 @@ def main():
             tpl = Path(values['-TEMPLATE_PATH-'])
             # Resolve output directory, interpreting 'desktop' keyword
             out_raw = values.get('-OUTPUT_DIR-', '')
-            if isinstance(out_raw, str) and out_raw.lower() == 'desktop':
-                outdir = Path.home() / 'Desktop'
-            elif out_raw:
-                outdir = Path(out_raw).expanduser()
-            else:
-                outdir = None
+            outdir = resolve_outdir(out_raw)
 
             if not tpl.exists() or not tpl.is_file():
                 sg.popup_error('有効なテンプレートファイルを指定してください')
