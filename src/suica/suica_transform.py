@@ -1,5 +1,49 @@
 import pandas as pd
-import re
+
+
+# ヘルパー関数: 日付ごとの通勤経路(DataFrame)を生成
+def _generate_routes_df(df2: pd.DataFrame) -> pd.DataFrame:
+    routes = []
+    for date, grp in df2.groupby('日付'):
+        seen = set()
+        pairs = []
+        # ユニークなstationペア(順序保持)を収集
+        for _, row in grp.iterrows():
+            orig1 = str(row['利用駅1']).strip()
+            orig2 = str(row['利用駅2']).strip()
+            key = frozenset([orig1, orig2])
+            if key in seen:
+                continue
+            seen.add(key)
+            pairs.append((orig1, orig2))
+        # オーバーラップするペアを連結してセグメント化
+        segments = []
+        if pairs:
+            curr = [pairs[0][0], pairs[0][1]]
+            prev_end = pairs[0][1]
+            for a, b in pairs[1:]:
+                if a == prev_end:
+                    curr.append(b)
+                    prev_end = b
+                else:
+                    segments.append(curr)
+                    curr = [a, b]
+                    prev_end = b
+            segments.append(curr)
+        # セグメントを文字列化
+        route_str = ' '.join('～'.join(seg) for seg in segments)
+        routes.append({'日付': date, '通勤経路': route_str})
+    return pd.DataFrame(routes)
+
+
+# ヘルパー関数: 日付ごとの往復金額(DataFrame)を計算
+def _calculate_total_df(df2: pd.DataFrame) -> pd.DataFrame:
+    return (
+        df2.groupby('日付')['abs金額']
+        .sum()
+        .reset_index()
+        .rename(columns={'abs金額': '往復金額'})
+    )
 
 
 def transform_commute(df: pd.DataFrame) -> pd.DataFrame:
@@ -21,33 +65,9 @@ def transform_commute(df: pd.DataFrame) -> pd.DataFrame:
 
     # 金額はabsで計算
     df2['abs金額'] = df2['支払額'].abs()
-    # 日付ごとに集計: 通勤経路をユニークに抽出し、合計金額を計算
-    # 通勤経路は、各日付の利用駅ペアを作成、最初の出現順で '駅1～駅2' として連結
-    routes = []
-    for date, grp in df2.groupby('日付'):
-        seen = set()
-        route_labels = []
-        for _, row in grp.iterrows():
-            # 原始駅名と比較用クリーン駅名取得
-            orig1 = str(row['利用駅1']).strip()
-            orig2 = str(row['利用駅2']).strip()
-            cmp1 = re.sub(r'\s+', '', orig1)
-            cmp2 = re.sub(r'\s+', '', orig2)
-            pair = frozenset([cmp1, cmp2])
-            if pair in seen:
-                continue
-            seen.add(pair)
-            # 表示はtrimのみした元の駅名を使用
-            route_labels.append(f"{orig1}～{orig2}")
-        routes.append({'日付': date, '通勤経路': ' '.join(route_labels)})
-    routes_df = pd.DataFrame(routes)
-    # 日付ごとの合計金額
-    total_df = (
-        df2.groupby('日付')['abs金額']
-           .sum()
-           .reset_index()
-           .rename(columns={'abs金額': '往復金額'})
-    )
+    # ヘルパー関数で通勤経路と往復金額を生成
+    routes_df = _generate_routes_df(df2)
+    total_df = _calculate_total_df(df2)
     # routes_df と合計金額をマージ
     result = pd.merge(routes_df, total_df, on='日付')
     # 日付を YYYY/MM/DD 形式の文字列に変換
@@ -56,11 +76,11 @@ def transform_commute(df: pd.DataFrame) -> pd.DataFrame:
     return result[['日付', '通勤経路', '往復金額']]
 
 
-#         日付     通勤経路  往復金額
-# 2023/10/18 竹ノ塚～東武押上   522
-# 2023/10/24 竹ノ塚～地　入谷   712
-# 2023/10/25 竹ノ塚～地　入谷   712
-# 2023/10/26  竹ノ塚～三ノ輪   712
+#         日付                                            通勤経路  往復金額
+# 2023/10/18                                        竹ノ塚～東武押上   522
+# 2023/10/24                                        竹ノ塚～地　入谷   712
+# 2023/10/25                                        竹ノ塚～地　入谷   712
+# 2023/10/26                      竹ノ塚～三ノ輪 地　入谷～地北千住 東武北千～竹ノ塚   712
 if __name__ == '__main__':
     # サンプル実行例
     import sys
