@@ -38,3 +38,10 @@ pythonのコードを実行するときは、仮想環境で行う
 ```
 ./env/Scripts/python.exe hoge.py
 ```
+
+## テスト実行コマンド
+テストを実行する場合は、仮想環境のPythonを使い、以下のコマンドを実行します:
+
+```
+./env/Scripts/python.exe -m pytest
+```

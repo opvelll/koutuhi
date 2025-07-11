@@ -89,6 +89,20 @@ GUIアプリケーションを通じて、ユーザーは必要なPDFファイ�
     python main.pyw
     ```
 
+## テスト環境
+
+ここまでの設定でテスト環境が整っています。
+
+- `requirements.txt` に `pytest`, `pytest-cov` を追加
+- テストコードは `tests/` ディレクトリ以下に配置
+- CLI での実行:
+
+  ```powershell
+  ./env/Scripts/python.exe -m pytest
+  ```
+
+- VSCode タスク (Run Pytest) から実行可能
+
 ## 注意点
 
 -   本ツールのPDF解析ロジックは、`sample`ディレクトリにある特定のフォーマットを前提としています。異なるレイアウトのPDFでは、正常に動作しない可能性が高いです。
