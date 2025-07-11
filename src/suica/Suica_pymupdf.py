@@ -131,13 +131,14 @@ def add_year_to_dates(df, report_date):
 
 
 # --- Extraction Result ---
-#         日付 種別1  利用駅1 種別2   利用駅2  支払額   残額
-# 2023/10/16   繰                     0 2494
-# 2023/10/18   入   竹ノ塚   出   東武押上 -261 2233
-# 2023/10/18   入  東武押上   出    竹ノ塚 -261 1972
-# 2023/10/24   入   竹ノ塚   出   地　入谷 -356 1616
-# 2023/10/24   入     地  入谷  出 竹ノ塚 -356 1260
-# 2023/10/25   入   竹ノ塚   出   地　入谷 -356  904
+#    日付 種別1  利用駅1 種別2   利用駅2  支払額   残額
+# 10/16   繰                     0 2494
+# 10/18   入   竹ノ塚   出   東武押上 -261 2233
+# 10/18   入  東武押上   出    竹ノ塚 -261 1972
+# 10/24   入   竹ノ塚   出   地　入谷 -356 1616
+# 10/24   入     地  入谷  出 竹ノ塚 -356 1260
+# 10/25   入   竹ノ塚   出   地　入谷 -356  904
+# ...（以下省略）...
 if __name__ == '__main__':
     sample_pdf_path = os.path.join(
         "sample", "JE80F121120754077_20231016_20240115160118.pdf")
@@ -152,12 +153,8 @@ if __name__ == '__main__':
         # 履歴データを抽出
         extracted_data = extract_suica_history_pymupdf(sample_pdf_path)
         if not extracted_data.empty:
-            # 結果をprintで表示
-            # print("\n--- Extraction Result ---")
-            # print(extracted_data.to_string(index=False))
-            # 年情報を追加して表示
-            dated_df = add_year_to_dates(extracted_data, report_date)
-            print("\n--- Extraction with Year ---")
-            print(dated_df.to_string(index=False))
+            # 抽出結果をprintで表示
+            print("\n--- Extraction Result ---")
+            print(extracted_data.to_string(index=False))
         else:
             print("\nExtraction did not return any data or failed to parse.")
