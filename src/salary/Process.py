@@ -45,5 +45,5 @@ def extract_workday_from_salary_pdf(path):
 
 if __name__ == '__main__':
     workdays = extract_workday_from_salary_pdf(
-        "C:/Users/segawa/koutuhi/sample/給与明細書_20240119141639.pdf")
+        "sample/給与明細書_20240119141639.pdf")
     print(workdays)

@@ -37,6 +37,6 @@ def extract_workday_from_salary_pdf_pymupdf_simple(path):
 
 # テスト用実行
 if __name__ == '__main__':
-    sample_path = "C:/Users/segawa/koutuhi/sample/給与明細書_20240119141639.pdf"
+    sample_path = "sample/給与明細書_20240119141639.pdf"
     for rec in extract_workday_from_salary_pdf_pymupdf_simple(sample_path):
         print(rec)

@@ -73,6 +73,6 @@ def extract_workday_from_salary_pdf_pymupdf(path):
 
 if __name__ == '__main__':
     workdays = extract_workday_from_salary_pdf_pymupdf(
-        "C:/Users/segawa/koutuhi/sample/給与明細書_20240119141639.pdf")
+        "sample/給与明細書_20240119141639.pdf")
     for day in workdays:
         print(day)
