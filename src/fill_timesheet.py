@@ -1,3 +1,6 @@
+from pathlib import Path as _Path2
+import pandas as _pd
+from pathlib import Path as _Path
 import os
 from pathlib import Path
 from datetime import datetime
@@ -80,6 +83,51 @@ def make_timesheets(pdf_path: Path, template_path: Path, output_dir: Path):
     config_path = Path('setting/defaults.yaml')
     settings = load_defaults(config_path)
     for (year, month), group in df.groupby(['year', 'month']):
+        wb = openpyxl.load_workbook(template_path)
+        ws = wb['勤務表']
+        write_report_date(ws, year, month)
+        write_static_entries(ws, settings)
+        write_commute_entries(ws, group)
+        out_file = output_dir / f"勤務表_{year:04d}-{month:02d}.xlsx"
+        wb.save(out_file)
+        print(f"✓ 出力完了: {out_file}")
+
+
+# GUI用: 抽出したSuica履歴をプレビューする
+
+
+def preview_suica_records(pdf_path: _Path) -> _pd.DataFrame:
+    """
+    Suica PDFから全履歴を抽出し、日付をdatetime型に変換して返す（GUIプレビュー用）。
+    """
+    report_date = extract_history_date_pymupdf(pdf_path)
+    df_raw = extract_suica_history_pymupdf(pdf_path)
+    df_with_year = add_year_to_dates(df_raw, report_date)
+    df_with_year['日付'] = _pd.to_datetime(df_with_year['日付'])
+    return df_with_year
+
+
+# GUI用: 選択されたSuica履歴から勤務表を生成する
+
+
+def make_timesheets_from_records(
+    df_records: _pd.DataFrame,
+    template_path: _Path2 = TEMPLATE_PATH,
+    output_dir: _Path2 = OUTPUT_DIR,
+    config_path: _Path2 = Path('setting/defaults.yaml')
+):
+    """
+    フィルタ済みのSuica履歴(df_records)から通勤情報を生成し、テンプレートに反映して勤務表を出力する。
+    """
+    output_dir.mkdir(exist_ok=True)
+    # 通勤情報に変換
+    df_comm = transform_commute(df_records)
+    df_comm['日付'] = _pd.to_datetime(df_comm['日付'])
+    df_comm['year'] = df_comm['日付'].dt.year
+    df_comm['month'] = df_comm['日付'].dt.month
+    # 設定読み込み
+    settings = load_defaults(config_path)
+    for (year, month), group in df_comm.groupby(['year', 'month']):
         wb = openpyxl.load_workbook(template_path)
         ws = wb['勤務表']
         write_report_date(ws, year, month)
