@@ -189,5 +189,37 @@ if __name__ == '__main__':
 
 ---
 
+## 9 本実装の更新仕様
+
+### 9.1 設定ファイル
+- `setting/defaults.yaml` を追加
+  ```yaml
+  branch: "営業部"
+  employee_id: "12345"
+  name: "太郎 誠"
+  ```
+  - J3, Q3, Z3 に固有情報を入力する際に参照
+
+### 9.2 追加したヘルパ関数
+- `prepare_suica_df(pdf_path)`
+  - Suica PDF から日付・運賃データを抽出・変形し、年月列を付与した DataFrame を返却
+- `write_report_date(ws, year, month)`
+  - セル D3 に対象年月を `yyyy年m月` 形式で入力
+- `write_commute_entries(ws, group)`
+  - 通勤経路(V列)・往復金額(AG列)を既存値が空の場合のみ入力
+- `load_defaults(config_path)`
+  - YAML 形式の `defaults.yaml` を読み込み、設定を辞書で返却
+- `write_static_entries(ws, settings)`
+  - J3: 所属支社、Q3: 社員ID、Z3: 氏名 を既存値が空の場合のみ入力
+- `verify_timesheets(output_dir, config_path)`
+  - 出力済み勤務表ファイルを読み込み、静的情報（J3/Q3/Z3）を検証
+  - 全件一致時に「verification passed」を出力
+
+### 9.3 実行フロー
+1. `make_timesheets` で勤務表ファイルを月別に生成
+2. `verify_timesheets` で出力結果の静的情報を検証
+
+---
+
 **最終目標** : 毎月 1 クリックで「Suica 明細 PDF」→「勤務表\_YYYY-MM.xlsx / .pdf」生成し、そのまま提出。
 
