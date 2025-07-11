@@ -1,3 +1,5 @@
-branch: "東京"
-employee_id: "12345"
-name: "太郎 誠"
+branch: 東京
+employee_id: '12345'
+name: 太郎 誠
+output_dir: desktop
+template_path: setting/d54ff476ff529c75ab262cbbed599019.xlsx
