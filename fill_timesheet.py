@@ -100,27 +100,7 @@ def make_timesheets(pdf_path: Path, template_path: Path, output_dir: Path):
         print(f"✓ 出力完了: {out_file}")
 
 
-# 確認関数: 出力ファイルの静的情報(J3, Q3, Z3)を検証
-def verify_timesheets(output_dir: Path, config_path: Path):
-    settings = load_defaults(config_path)
-    for file in output_dir.glob('勤務表_*.xlsx'):
-        wb = openpyxl.load_workbook(file, data_only=True)
-        ws = wb['勤務表']
-        assert ws['J3'].value == settings[
-            'branch'], f"{file.name}: J3 expected {settings['branch']}, got {ws['J3'].value}"
-        assert ws['Q3'].value == settings[
-            'employee_id'], f"{file.name}: Q3 expected {settings['employee_id']}, got {ws['Q3'].value}"
-        assert ws['Z3'].value == settings['name'], f"{file.name}: Z3 expected {settings['name']}, got {ws['Z3'].value}"
-    print("✓ verification passed: all static entries are correct")
-
+# verify_timesheets moved to tests
 
 if __name__ == '__main__':
     make_timesheets(PDF_PATH, TEMPLATE_PATH, OUTPUT_DIR)
-    # 出力結果の検証
-    verify_timesheets(OUTPUT_DIR, Path('setting/defaults.yaml'))
-
-    # 以下サンプル実行結果例
-    # ✓ 出力完了: output\勤務表_2023-10.xlsx
-    # ✓ 出力完了: output\勤務表_2023-11.xlsx
-    # ✓ 出力完了: output\勤務表_2023-12.xlsx
-    # ✓ 出力完了: output\勤務表_2024-01.xlsx
