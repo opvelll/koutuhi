@@ -41,12 +41,17 @@ Suicaの利用履歴（PDF）から、交通経路、交通費の情報を抽出
    python main_gui.pyw
    ```
 
+・以降、仮想環境pythonでmain_gui.pywを起動できます。
+
+   ```powershell
+   .\env\Scripts\python.exe main_gui.pyw
+   ```
+
 ## 使い方
 
-0. Suicaの履歴ページからPDFファイルをダウンロード
-    https://www.mobilesuica.com/index.aspx モバイルSuicaでログイン→SF(電子マネー)利用履歴→選択した履歴を印刷
+0. [モバイルSuica](https://www.mobilesuica.com/index.aspx)にログイン。SF(電子マネー)利用履歴のページに移動。「選択した履歴を印刷」をクリック。PDFをダウンロード。
 
-1. インストールから、`main_gui.pyw`の起動
+1. `main_gui.pyw`の起動
    ![初期画面](<img/スクリーンショット 2025-07-12 035501.png>)
 
 2. Suica PDFファイルを**Browse**ボタンをクリックして選択し、**Load**ボタンをクリック。
@@ -61,4 +66,4 @@ Suicaの利用履歴（PDF）から、交通経路、交通費の情報を抽出
 
 ## 注意点
 
-うまくPDFから情報を取り出せない＆うまくテンプレートに書き込めない場合がありますので、あくまで補助ツールとしてご利用ください。
+うまくPDFから情報を取り出せない＆うまくテンプレートに書き込めない場合がありますので、あくまで補助ツールとなります。
