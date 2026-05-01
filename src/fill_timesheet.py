@@ -1,7 +1,3 @@
-from pathlib import Path as _Path2
-import pandas as _pd
-from pathlib import Path as _Path
-import os
 from pathlib import Path
 from datetime import datetime
 import pandas as pd
@@ -14,7 +10,7 @@ from src.suica.suica_transform import transform_commute
 from src.suica.date_extractor import extract_history_date_pymupdf
 
 # テンプレート・出力設定
-TEMPLATE_PATH = Path('sample/d54ff476ff529c75ab262cbbed599019.xlsx')
+TEMPLATE_PATH = Path('setting/d54ff476ff529c75ab262cbbed599019.xlsx')
 OUTPUT_DIR = Path('output')
 # 対象Suica PDF
 PDF_PATH = Path('sample/JE80F121120754077_20231016_20240115160118.pdf')
@@ -25,6 +21,8 @@ def prepare_suica_df(pdf_path: Path) -> pd.DataFrame:
     df_raw = extract_suica_history_pymupdf(pdf_path)
     df_with_year = add_year_to_dates(df_raw, report_date)
     df = transform_commute(df_with_year)
+    if df.empty:
+        raise ValueError('Suica PDFから通勤履歴を抽出できませんでした')
     df['日付'] = pd.to_datetime(df['日付'])
     df['year'] = df['日付'].dt.year
     df['month'] = df['日付'].dt.month
@@ -57,7 +55,7 @@ def write_commute_entries(ws, group: pd.DataFrame):
 
 def load_defaults(config_path: Path) -> dict:
     with open(config_path, 'r', encoding='utf-8') as f:
-        return yaml.safe_load(f)
+        return yaml.safe_load(f) or {}
 
 
 # 固定情報（所属支社、社員ID、氏名）の書き込み
@@ -78,7 +76,7 @@ def make_timesheets(pdf_path: Path, template_path: Path, output_dir: Path):
     """
     Suica PDF から通勤情報を抽出し、Excelテンプレートに反映、月ごとに出力する。
     """
-    output_dir.mkdir(exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
     df = prepare_suica_df(pdf_path)
     config_path = Path('setting/defaults.yaml')
     settings = load_defaults(config_path)
@@ -96,14 +94,16 @@ def make_timesheets(pdf_path: Path, template_path: Path, output_dir: Path):
 # GUI用: 抽出したSuica履歴をプレビューする
 
 
-def preview_suica_records(pdf_path: _Path) -> _pd.DataFrame:
+def preview_suica_records(pdf_path: Path) -> pd.DataFrame:
     """
     Suica PDFから全履歴を抽出し、日付をdatetime型に変換して返す（GUIプレビュー用）。
     """
     report_date = extract_history_date_pymupdf(pdf_path)
     df_raw = extract_suica_history_pymupdf(pdf_path)
     df_with_year = add_year_to_dates(df_raw, report_date)
-    df_with_year['日付'] = _pd.to_datetime(df_with_year['日付'])
+    if df_with_year.empty:
+        raise ValueError('Suica PDFから利用履歴を抽出できませんでした')
+    df_with_year['日付'] = pd.to_datetime(df_with_year['日付'])
     return df_with_year
 
 
@@ -111,18 +111,20 @@ def preview_suica_records(pdf_path: _Path) -> _pd.DataFrame:
 
 
 def make_timesheets_from_records(
-    df_records: _pd.DataFrame,
-    template_path: _Path2 = TEMPLATE_PATH,
-    output_dir: _Path2 = OUTPUT_DIR,
-    config_path: _Path2 = Path('setting/defaults.yaml')
+    df_records: pd.DataFrame,
+    template_path: Path = TEMPLATE_PATH,
+    output_dir: Path = OUTPUT_DIR,
+    config_path: Path = Path('setting/defaults.yaml')
 ):
     """
     フィルタ済みのSuica履歴(df_records)から通勤情報を生成し、テンプレートに反映して勤務表を出力する。
     """
-    output_dir.mkdir(exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
     # 通勤情報に変換
     df_comm = transform_commute(df_records)
-    df_comm['日付'] = _pd.to_datetime(df_comm['日付'])
+    if df_comm.empty:
+        raise ValueError('選択された履歴から通勤情報を作成できませんでした')
+    df_comm['日付'] = pd.to_datetime(df_comm['日付'])
     df_comm['year'] = df_comm['日付'].dt.year
     df_comm['month'] = df_comm['日付'].dt.month
     # 設定読み込み

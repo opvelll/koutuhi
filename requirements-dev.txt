@@ -1,0 +1,4 @@
+-r requirements.txt
+
+pytest>=9,<10
+pytest-cov>=7,<8

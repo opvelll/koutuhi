@@ -4,77 +4,115 @@ applyTo: "**"
 
 # koutuhi プロジェクト Copilot 指示書
 
-## 1. プロジェクト概要
-- 給与明細（PDF）とSuica利用履歴（PDF）から勤務日・勤務地・交通費を抽出し、交通費請求書（Excel）を自動生成するPythonツール。
-- GUI（PySimpleGUI）とCLIの両方を提供し、ユーザーはPDFを選択してデータを確認・編集可能。
+## 応答
 
-## 2. 技術スタック
-- OS: Windows 11
-- シェル: PowerShell (`pwsh.exe`)
-- 言語: Python 3.12, 仮想環境: venv (`env/Scripts/Activate.ps1`)
-- PDF解析: PyMuPDF (`src/suica/Suica_pymupdf.py`), pdfplumber, tabula-py, pdfminer.six
-- データ操作: pandas, openpyxl
+- ユーザーへの説明は日本語で行う。
+- Windows / PowerShell 前提でコマンド例を書く。
+
+## プロジェクト概要
+
+Suica利用履歴PDFから交通経路・交通費を抽出し、会社指定の「勤務表及び交通費請求書」Excelに自動入力するPythonツール。
+
+主な入口:
+- GUI: `main_gui.pyw`
+- CLI: `main_cli.pyw`
+- Excel生成処理: `src/fill_timesheet.py`
+- Suica PDF抽出: `src/suica/Suica_pymupdf.py`
+- Suica履歴変換: `src/suica/suica_transform.py`
+
+## 技術スタック
+
+- OS: Windows
+- Python: 3.12 (`.python-version`)
+- 環境管理: uv優先
+- GUI: PySimpleGUI
+- PDF解析: PyMuPDF, pdfplumber, tabula-py, pdfminer.six
+- データ操作: pandas
+- Excel操作: openpyxl
 - 設定: YAML (`setting/defaults.yaml`)
-- テスト: pytest (`tests/`)
+- テスト: pytest
 
-## 3. リポジトリ構造
+## 開発ワークフロー
+
+uvを使う。
+
+```powershell
+uv venv
+uv pip install -r requirements-dev.txt
+uv run pytest -q
 ```
+
+実行時依存だけを入れる場合:
+
+```powershell
+uv pip install -r requirements.txt
+```
+
+`uv`が見つからない既存セッションでは、必要に応じて一時的にPATHへ追加する。
+
+```powershell
+$env:Path = $env:Path.TrimEnd(';') + ';' + (Join-Path $env:USERPROFILE '.local\bin')
+```
+
+## 実行コマンド
+
+GUI:
+
+```powershell
+uv run python main_gui.pyw
+```
+
+CLI:
+
+```powershell
+uv run python main_cli.pyw --pdf sample\suica.pdf
+```
+
+テスト:
+
+```powershell
+uv run pytest -q
+```
+
+構文チェック:
+
+```powershell
+uv run python -m py_compile main_gui.pyw main_cli.pyw src\fill_timesheet.py src\suica\Suica_pymupdf.py src\suica\suica_transform.py src\suica\date_extractor.py
+```
+
+## リポジトリ構造
+
+```text
 .
-├── main.pyw             # GUIエントリポイント (PySimpleGUI)
-├── main_cli.pyw         # CLIエントリポイント
-├── fill_timesheet.py    # Suica履歴をExcel勤務表に反映
-├── analyze_pdf.py       # PDF解析ユーティリティ（salary, suica）
-├── generate_report.py   # レポート生成スクリプト
-├── requirements.txt     # 依存パッケージ一覧
-├── sample/              # サンプルPDF・Excelテンプレート
-├── output/              # 自動生成される勤務表Excel
-├── setting/             # 固定設定 (defaults.yaml)
+├── main_gui.pyw
+├── main_cli.pyw
+├── requirements.txt
+├── requirements-dev.txt
+├── pytest.ini
+├── setting/
+│   ├── defaults.yaml
+│   └── d54ff476ff529c75ab262cbbed599019.xlsx
 ├── src/
-│   ├── salary/         # 給与明細PDF処理モジュール
-│   ├── suica/          # Suica履歴PDF処理モジュール
-│   └── util/           # 共通ユーティリティ
-├── tests/               # pytest テスト
-└── .github/
-    └── copilot-instructions.md  # このファイル
+│   ├── fill_timesheet.py
+│   ├── salary/
+│   ├── suica/
+│   └── util/
+└── tests/
 ```
 
-## 4. 開発ワークフロー
-1. 仮想環境の有効化:
-   ```powershell
-   .\env\Scripts\Activate.ps1
-   ```
-2. 依存パッケージのインストール・更新:
-   ```powershell
-   pip install -r requirements.txt
-   ```
-3. GUI 実行:
-   ```powershell
-   .\env\Scripts\python.exe main.pyw
-   ```
-4. CLI 実行 / サンプルスクリプト:
-   ```powershell
-   .\env\Scripts\python.exe fill_timesheet.py
-   ```
-5. テスト実行:
-   - VSCode タスク: "Run Pytest"
-   - 直接:
-     ```powershell
-     .\env\Scripts\python.exe -m pytest
-     ```
+## プロジェクト慣習
 
-## 5. プロジェクトの慣習・パターン
-- **単一ファイル実行**: `main.pyw`, `main_cli.pyw`, `fill_timesheet.py` は単体で起動し、`print()` で実行結果を出力、コード内にコメント付きサンプル結果を残す。
-- **Pathlib & Config**: ファイルパスは必ず `pathlib.Path` で扱い、静的情報は `setting/defaults.yaml` から読み込む (`load_defaults`)。
-- **Excel 反映**: `openpyxl` でテンプレート（`sample/*.xlsx`）を読み込み、`write_report_date`, `write_static_entries`, `write_commute_entries` 関数で値を埋める。
-- **PDF → DataFrame**: Suica用 `extract_suica_history_pymupdf` と `add_year_to_dates`, `transform_commute` を組み合わせてDataFrameに変換。
-- **テスト命名**: `tests/test_*.py` にまとめ、テスト対象の振る舞い（例: 出力ExcelのJ3/Q3/Z3セル検証）をシンプルに記述。
+- ファイルパスは`pathlib.Path`を使う。
+- 固定情報は`setting/defaults.yaml`から読み込む。
+- テンプレートExcelの既定パスは`setting/d54ff476ff529c75ab262cbbed599019.xlsx`。
+- `output_dir: desktop`はデスクトップ出力として扱う。
+- 既存Excelセルへの書き込みは、空欄の場合だけ行うロジックを維持する。
+- Suica PDFや生成済みExcelは個人情報を含みやすいため、`sample/`や`output/`に置いてコミットしない。
+- テストは`sample/`や`output/`の事前ファイルに依存させない。
 
-## 6. コーディング時の注意点
-- 新規モジュールは必ず `src/` 以下に配置し、相対インポートを使って参照する。
-- GUI と CLI のエントリポイントは分離する（`main.pyw` と `main_cli.pyw`）。
-- 既存セルへの書き込みは上書き禁止のロジックを保持 (`if cell.value in (None, ''):`)。
-- テスト用 `output/` フォルダは.gitignoreに含めず、テスト前に再生成されることを確認。
+## 依存関係
 
----
-
-この内容で不明点や追記項目があれば教えてください。
+- `requirements.txt`はアプリ実行に必要な依存だけを置く。
+- `requirements-dev.txt`は`pytest`などテスト用依存を置く。
+- pandasはSuica履歴の表処理、日付ごとの集計、Excel出力前の年月グルーピングに使う。
+- PySimpleGUIは当面使い続ける。長期的にはFreeSimpleGUIやPySide6移行を検討するが、この作業では移行しない。

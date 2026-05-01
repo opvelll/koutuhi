@@ -18,6 +18,24 @@ Suicaの利用履歴（PDF）から、交通経路、交通費の情報を抽出
     git clone https://github.com/opvelll/koutuhi.git
     ```
 
+2. uvで仮想環境を構築
+
+   PowerShell:
+   ```powershell
+   uv venv
+   uv pip install -r requirements.txt
+   ```
+
+   テストも実行する場合:
+   ```powershell
+   uv pip install -r requirements-dev.txt
+   uv run pytest -q
+   ```
+
+   `uv` コマンドが見つからない場合は、PowerShellを開き直すか、`C:\Users\<ユーザー名>\.local\bin` がPathに含まれているか確認してください。
+
+### venvを直接使う場合
+
 2. 仮想環境の構築と有効化  
    PowerShell:
    ```powershell
