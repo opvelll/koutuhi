@@ -10,7 +10,23 @@ Suicaの利用履歴（PDF）から、交通経路、交通費の情報を抽出
 生成例
 ![生成例](<img/スクリーンショット 2025-07-12 205816.png>)
 
-## インストール
+## ダウンロードして使う場合
+
+GitHub Releases から `koutuhi-windows.zip` をダウンロードし、任意のフォルダに展開してください。
+
+展開後、`koutuhi.exe` をダブルクリックするとアプリを起動できます。
+
+```text
+koutuhi-windows/
+├── koutuhi.exe
+└── setting/
+    ├── defaults.yaml
+    └── d54ff476ff529c75ab262cbbed599019.xlsx
+```
+
+`setting/defaults.yaml` で、支社・社員ID・氏名・出力先などの初期値を変更できます。`setting` フォルダは `koutuhi.exe` と同じ場所に置いてください。
+
+## 開発環境で動かす場合
 
 1. リポジトリをクローン 
 
@@ -69,7 +85,7 @@ Suicaの利用履歴（PDF）から、交通経路、交通費の情報を抽出
 
 0. [モバイルSuica](https://www.mobilesuica.com/index.aspx)にログイン。SF(電子マネー)利用履歴のページに移動。「選択した履歴を印刷」をクリック。PDFをダウンロード。
 
-1. `main_gui.pyw`の起動
+1. `koutuhi.exe` または `main_gui.pyw` の起動
    ![初期画面](<img/スクリーンショット 2025-07-12 035501.png>)
 
 2. Suica PDFファイルを**Browse**ボタンをクリックして選択し、**Load**ボタンをクリック。
@@ -85,3 +101,22 @@ Suicaの利用履歴（PDF）から、交通経路、交通費の情報を抽出
 ## 注意点
 
 うまくPDFから情報を取り出せない＆うまくテンプレートに書き込めない場合がありますので、あくまで補助ツールとなります。
+
+## 開発者向け: Windows配布zipの作成
+
+PowerShell:
+
+```powershell
+uv venv
+uv pip install -r requirements-dev.txt
+.\scripts\build_windows.ps1
+```
+
+成功すると `artifacts/koutuhi-windows.zip` が作成されます。
+
+GitHub Releases では、`v0.1.0` のようなタグをpushすると `.github/workflows/release.yml` がWindows用zipをビルドし、リリースへ添付します。
+
+```powershell
+git tag v0.1.0
+git push origin v0.1.0
+```

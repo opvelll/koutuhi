@@ -8,9 +8,10 @@ import yaml
 from src.suica.Suica_pymupdf import extract_suica_history_pymupdf, add_year_to_dates
 from src.suica.suica_transform import transform_commute
 from src.suica.date_extractor import extract_history_date_pymupdf
+from src.app_paths import resource_path
 
 # テンプレート・出力設定
-TEMPLATE_PATH = Path('setting/d54ff476ff529c75ab262cbbed599019.xlsx')
+TEMPLATE_PATH = resource_path('setting', 'd54ff476ff529c75ab262cbbed599019.xlsx')
 OUTPUT_DIR = Path('output')
 # 対象Suica PDF
 PDF_PATH = Path('sample/JE80F121120754077_20231016_20240115160118.pdf')
@@ -78,7 +79,7 @@ def make_timesheets(pdf_path: Path, template_path: Path, output_dir: Path):
     """
     output_dir.mkdir(parents=True, exist_ok=True)
     df = prepare_suica_df(pdf_path)
-    config_path = Path('setting/defaults.yaml')
+    config_path = resource_path('setting', 'defaults.yaml')
     settings = load_defaults(config_path)
     for (year, month), group in df.groupby(['year', 'month']):
         wb = openpyxl.load_workbook(template_path)
@@ -114,7 +115,7 @@ def make_timesheets_from_records(
     df_records: pd.DataFrame,
     template_path: Path = TEMPLATE_PATH,
     output_dir: Path = OUTPUT_DIR,
-    config_path: Path = Path('setting/defaults.yaml')
+    config_path: Path = resource_path('setting', 'defaults.yaml')
 ):
     """
     フィルタ済みのSuica履歴(df_records)から通勤情報を生成し、テンプレートに反映して勤務表を出力する。

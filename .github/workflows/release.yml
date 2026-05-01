@@ -1,0 +1,45 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: |
+          uv venv --python 3.12
+          uv pip install -r requirements-dev.txt
+
+      - name: Test
+        run: uv run pytest -q
+
+      - name: Build Windows app
+        shell: pwsh
+        run: .\scripts\build_windows.ps1
+
+      - name: Package artifact
+        shell: pwsh
+        run: |
+          Get-Item artifacts\koutuhi-windows.zip | Format-List FullName,Length
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create ${{ github.ref_name }} artifacts\koutuhi-windows.zip --generate-notes

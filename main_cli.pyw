@@ -1,6 +1,7 @@
 import argparse
 from pathlib import Path
 from src.fill_timesheet import make_timesheets
+from src.app_paths import resolve_app_path
 
 
 def main():
@@ -13,7 +14,7 @@ def main():
                         type=Path, help='出力先ディレクトリパス')
     args = parser.parse_args()
 
-    make_timesheets(args.pdf, args.template, args.output)
+    make_timesheets(args.pdf, resolve_app_path(args.template), args.output)
 
 
 if __name__ == '__main__':

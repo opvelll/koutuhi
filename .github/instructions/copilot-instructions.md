@@ -26,7 +26,7 @@ Suica利用履歴PDFから交通経路・交通費を抽出し、会社指定の
 - Python: 3.12 (`.python-version`)
 - 環境管理: uv優先
 - GUI: PySimpleGUI
-- PDF解析: PyMuPDF, pdfplumber, tabula-py, pdfminer.six
+- PDF解析: PyMuPDF
 - データ操作: pandas
 - Excel操作: openpyxl
 - 設定: YAML (`setting/defaults.yaml`)
@@ -94,7 +94,6 @@ uv run python -m py_compile main_gui.pyw main_cli.pyw src\fill_timesheet.py src\
 │   └── d54ff476ff529c75ab262cbbed599019.xlsx
 ├── src/
 │   ├── fill_timesheet.py
-│   ├── salary/
 │   ├── suica/
 │   └── util/
 └── tests/
