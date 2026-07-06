@@ -1,0 +1,9 @@
+packages:
+  - "web"
+
+minimumReleaseAge: 4320
+minimumReleaseAgeStrict: true
+savePrefix: ""
+verifyStoreIntegrity: true
+allowBuilds:
+  "tesseract.js@7.0.0": false

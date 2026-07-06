@@ -16,6 +16,8 @@ eggs/
 .eggs/
 lib/
 lib64/
+!web/src/lib/
+!web/src/lib/**
 parts/
 sdist/
 var/
@@ -158,3 +160,12 @@ cython_debug/
 sample/
 
 output/
+
+# Node / Vite
+node_modules/
+web/node_modules/
+web/dist/
+web/coverage/
+*.tsbuildinfo
+web/vite.config.js
+web/vite.config.d.ts
