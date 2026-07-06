@@ -8,7 +8,7 @@ import {
   Square,
   Upload,
 } from "lucide-react";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import { transformCommute } from "./lib/suicaTransform";
 import { downloadWorkbook } from "./lib/excelGenerator";
@@ -22,11 +22,14 @@ export default function App() {
     message,
     pdfFile,
     templateFile,
+    templateSource,
+    defaultTemplateLoading,
     reportDate,
     records,
     generated,
     settings,
     ocrProgress,
+    initializeDefaultTemplate,
     loadPdf,
     runOcr,
     setTemplateFile,
@@ -49,6 +52,23 @@ export default function App() {
   const isBusy =
     status === "extracting" || status === "ocr-running" || status === "generating";
   const canGenerate = selectedCount > 0 && Boolean(templateFile) && !isBusy;
+  const templateTitle =
+    templateSource === "default"
+      ? "サンエスExcelテンプレート"
+      : templateFile
+        ? "選択したExcelテンプレート"
+        : defaultTemplateLoading
+          ? "テンプレートを読み込み中"
+          : "Excelテンプレート未選択";
+  const templateDetail =
+    templateSource === "default"
+      ? "既定テンプレートを使用中"
+      : templateFile?.name ?? "必要に応じてExcelファイルを選択";
+  const templateButtonLabel = templateFile ? "Excelを変更" : "Excelを選択";
+
+  useEffect(() => {
+    void initializeDefaultTemplate();
+  }, [initializeDefaultTemplate]);
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-950">
@@ -105,15 +125,30 @@ export default function App() {
                   setTemplateFile(event.target.files?.[0] ?? null)
                 }
               />
-              <button
-                className="flex h-10 w-full items-center justify-center gap-2 rounded-md border border-slate-300 px-3 text-sm font-medium hover:bg-slate-100"
-                type="button"
-                onClick={() => templateInputRef.current?.click()}
-              >
-                <FileSpreadsheet className="h-4 w-4" />
-                Excel選択
-              </button>
-              <FileName label="Excel" value={templateFile?.name} />
+              <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3">
+                <div className="flex items-start gap-3">
+                  <FileSpreadsheet className="mt-0.5 h-4 w-4 flex-none text-emerald-800" />
+                  <div className="min-w-0">
+                    <div className="text-xs font-medium text-emerald-800">
+                      Excelテンプレート
+                    </div>
+                    <div className="mt-1 truncate text-sm font-semibold text-slate-950">
+                      {templateTitle}
+                    </div>
+                    <div className="mt-1 truncate text-xs text-slate-600">
+                      {templateDetail}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  className="mt-3 flex h-9 w-full items-center justify-center gap-2 rounded-md border border-emerald-300 bg-white px-3 text-sm font-medium text-emerald-950 hover:bg-emerald-100"
+                  type="button"
+                  onClick={() => templateInputRef.current?.click()}
+                >
+                  <FileSpreadsheet className="h-4 w-4" />
+                  {templateButtonLabel}
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 gap-3">
@@ -393,4 +428,3 @@ function formatSigned(value: number): string {
 function formatYen(value: number): string {
   return value.toLocaleString("ja-JP");
 }
-
