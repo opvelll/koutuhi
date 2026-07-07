@@ -4,6 +4,8 @@ import os
 import re
 from .date_extractor import extract_history_date_pymupdf
 
+SUICA_COLUMNS = ['日付', '種別1', '利用駅1', '種別2', '利用駅2', '支払額', '残額']
+
 
 def parse_suica_history_text(lines):
     """
@@ -45,7 +47,7 @@ def parse_suica_history_text(lines):
             data.append(row)
 
     if not data:
-        return pd.DataFrame()
+        return pd.DataFrame(columns=SUICA_COLUMNS)
 
     columns = ['月', '日', '種別1', '利用駅1', '種別2', '利用駅2', '残額', '支払額']
     df = pd.DataFrame(data, columns=columns)
@@ -57,7 +59,7 @@ def parse_suica_history_text(lines):
     df['日'] = df['日'].str.zfill(2)
     df['日付'] = df['月'] + '/' + df['日']
 
-    df = df[['日付', '種別1', '利用駅1', '種別2', '利用駅2', '支払額', '残額']]
+    df = df[SUICA_COLUMNS]
 
     return df
 
@@ -70,7 +72,7 @@ def extract_suica_history_pymupdf(pdf_path):
         doc = fitz.open(pdf_path)
     except Exception as e:
         print(f"Error: ファイルを開けませんでした: {e}")
-        return pd.DataFrame()
+        return pd.DataFrame(columns=SUICA_COLUMNS)
 
     all_lines = []
     table_rect = fitz.Rect(150, 90, 540, 680)
@@ -110,6 +112,13 @@ def add_year_to_dates(df, report_date):
     DataFrame の '日付' 列に年情報を付加します。
     report_date: 'YYYY/MM/DD' 形式の文字列
     """
+    if not report_date:
+        raise ValueError('履歴出力日を抽出できませんでした')
+    if df.empty:
+        return df.copy()
+    if '日付' not in df.columns:
+        raise ValueError("DataFrameに'日付'列がありません")
+
     # report_date の年と月を取得
     rep_year, rep_mon, _ = map(int, report_date.split('/'))
     df2 = df.copy().reset_index(drop=True)

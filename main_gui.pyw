@@ -3,6 +3,7 @@ from pathlib import Path
 import pandas as pd
 import yaml
 from src.fill_timesheet import preview_suica_records, make_timesheets_from_records, load_defaults
+from src.app_paths import resolve_app_path, resource_path
 
 
 def prepare_display_data(df):
@@ -58,7 +59,7 @@ def toggle_selection(clicked_index, window, selected_rows):
 def main():
     sg.theme('LightGrey1')
     # Load default settings
-    config_path = Path('setting/defaults.yaml')
+    config_path = resource_path('setting', 'defaults.yaml')
     settings = load_defaults(config_path)
     # Get raw default strings for display
     default_tpl_str = settings.get('template_path', '')
@@ -113,7 +114,11 @@ def main():
                 sg.popup_error('有効なPDFファイルを指定してください')
                 continue
 
-            df = preview_suica_records(pdf_path)
+            try:
+                df = preview_suica_records(pdf_path)
+            except Exception as e:
+                sg.popup_error(f'PDFの読み込みに失敗しました: {e}')
+                continue
 
             display_data, selected_rows, disabled_rows = prepare_display_data(
                 df)
@@ -139,7 +144,7 @@ def main():
 
             df_sel = df.loc[sorted(list(selected_rows))]
 
-            tpl = Path(values['-TEMPLATE_PATH-'])
+            tpl = resolve_app_path(values['-TEMPLATE_PATH-'])
             # Resolve output directory, interpreting 'desktop' keyword
             out_raw = values.get('-OUTPUT_DIR-', '')
             outdir = resolve_outdir(out_raw)
@@ -151,7 +156,11 @@ def main():
             if outdir and not outdir.exists():
                 outdir.mkdir(parents=True, exist_ok=True)
 
-            make_timesheets_from_records(df_sel, tpl, outdir or Path('output'))
+            try:
+                make_timesheets_from_records(df_sel, tpl, outdir or Path('output'))
+            except Exception as e:
+                sg.popup_error(f'勤務表の作成に失敗しました: {e}')
+                continue
             # Save updated defaults using raw input strings
             settings['template_path'] = values['-TEMPLATE_PATH-']
             settings['output_dir'] = values['-OUTPUT_DIR-']

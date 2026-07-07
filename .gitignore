@@ -34,6 +34,7 @@ MANIFEST
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
+!packaging/*.spec
 
 # Installer logs
 pip-log.txt
@@ -88,6 +89,7 @@ ipython_config.py
 #   For a library or package, you might want to commit these files, which store details
 #   of your virtual environment. For a service (e.g. a website), committing them is useful.
 .python-version
+!.python-version
 
 # pipenv
 #   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
@@ -118,6 +120,7 @@ celerybeat.pid
 # Environments
 .env
 .venv
+.venv-build/
 env/
 venv/
 ENV/
@@ -169,3 +172,4 @@ web/coverage/
 *.tsbuildinfo
 web/vite.config.js
 web/vite.config.d.ts
+artifacts/

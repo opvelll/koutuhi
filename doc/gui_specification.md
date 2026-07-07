@@ -48,7 +48,7 @@
 - PySimpleGUI
 - pandas
 - openpyxl
-- PyMuPDF 他
+- PyMuPDF
 
 ---
 *ドキュメントを確認後、リポジトリにコミットしてください。*

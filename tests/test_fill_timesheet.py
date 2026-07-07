@@ -1,33 +1,66 @@
-import openpyxl
-import yaml
-import pytest
 from pathlib import Path
 
-# テスト用: defaults.yaml の読み込み
+import openpyxl
+import pandas as pd
+import yaml
+
+from src.fill_timesheet import make_timesheets_from_records
 
 
-def load_defaults(config_path: Path) -> dict:
-    with open(config_path, 'r', encoding='utf-8') as f:
-        return yaml.safe_load(f)
+def _create_template(path: Path):
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = '勤務表'
+    wb.save(path)
 
 
-def test_verify_timesheets():
-    """
-    output ディレクトリ内の勤務表ファイルの J3, Q3, Z3 セルの値が defaults.yaml と一致することを検証する。
-    """
-    root = Path(__file__).parent.parent
-    output_dir = root / 'output'
-    config_path = root / 'setting' / 'defaults.yaml'
+def test_make_timesheets_from_records_writes_static_and_commute_entries(tmp_path):
+    template_path = tmp_path / 'template.xlsx'
+    config_path = tmp_path / 'defaults.yaml'
+    output_dir = tmp_path / 'nested' / 'output'
+    _create_template(template_path)
+    config_path.write_text(
+        yaml.safe_dump(
+            {
+                'branch': '東京',
+                'employee_id': '12345',
+                'name': '太郎 誠',
+            },
+            allow_unicode=True,
+        ),
+        encoding='utf-8',
+    )
 
-    settings = load_defaults(config_path)
-    files = list(output_dir.glob('勤務表_*.xlsx'))
-    assert files, f"No timesheet files found in {output_dir}"
-    for file in files:
-        wb = openpyxl.load_workbook(file, data_only=True)
-        ws = wb['勤務表']
-        assert ws['J3'].value == settings['branch'], (
-            f"{file.name}: expected branch {settings['branch']}, got {ws['J3'].value}")
-        assert ws['Q3'].value == settings['employee_id'], (
-            f"{file.name}: expected employee_id {settings['employee_id']}, got {ws['Q3'].value}")
-        assert ws['Z3'].value == settings['name'], (
-            f"{file.name}: expected name {settings['name']}, got {ws['Z3'].value}")
+    records = pd.DataFrame(
+        [
+            {
+                '日付': '2024/01/19',
+                '種別1': '入',
+                '利用駅1': '竹ノ塚',
+                '種別2': '出',
+                '利用駅2': '東武押上',
+                '支払額': -261,
+                '残額': 2233,
+            },
+            {
+                '日付': '2024/01/19',
+                '種別1': '入',
+                '利用駅1': '東武押上',
+                '種別2': '出',
+                '利用駅2': '竹ノ塚',
+                '支払額': -261,
+                '残額': 1972,
+            },
+        ]
+    )
+
+    make_timesheets_from_records(records, template_path, output_dir, config_path)
+
+    out_file = output_dir / '勤務表_2024-01.xlsx'
+    wb = openpyxl.load_workbook(out_file, data_only=True)
+    ws = wb['勤務表']
+    assert ws['J3'].value == '東京'
+    assert ws['Q3'].value == '12345'
+    assert ws['Z3'].value == '太郎 誠'
+    assert ws.cell(24, 22).value == '竹ノ塚～東武押上'
+    assert ws.cell(24, 33).value == 522
