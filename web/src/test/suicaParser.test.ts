@@ -5,7 +5,7 @@ import {
   extractHistoryDate,
   parseSuicaHistoryText,
 } from "../lib/suicaParser";
-import { transformCommute } from "../lib/suicaTransform";
+import { normalizeRouteKey, transformCommute } from "../lib/suicaTransform";
 
 describe("Suica history parser", () => {
   it("extracts the report date from sample PDF text", () => {
@@ -45,13 +45,20 @@ describe("Suica history parser", () => {
       "2024/1/15",
     );
 
+    const route = "竹ノ塚～地　入谷";
+    const routeKey = normalizeRouteKey(route);
+
     expect(transformCommute(records)).toEqual([
       {
+        id: `2023/10/24:${routeKey}`,
         date: "2023/10/24",
-        route: "竹ノ塚～地　入谷",
+        route,
+        routeKey,
         roundTripFare: 712,
+        selected: true,
+        companyName: "",
+        workLocation: "",
       },
     ]);
   });
 });
-

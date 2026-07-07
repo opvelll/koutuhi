@@ -1,14 +1,25 @@
 import { create } from "zustand";
 
 import type {
+  CommuteEntry,
   EmployeeSettings,
   ExtractStatus,
   GeneratedWorkbook,
+  RouteProfileMap,
   SuicaRecord,
 } from "../types";
 import { downloadWorkbook, generateTimesheets } from "../lib/excelGenerator";
 import { extractSuicaWithOcr, type OcrProgress } from "../lib/ocrFallback";
 import { extractSuicaFromPdfFile } from "../lib/pdfTextExtractor";
+import {
+  applyRouteProfiles,
+  clearRouteProfiles,
+  loadEmployeeSettings,
+  loadRouteProfiles,
+  saveEmployeeSettings,
+  saveRouteProfiles,
+  setRouteProfile,
+} from "../lib/savedInputs";
 import { transformCommute } from "../lib/suicaTransform";
 
 type TemplateSource = "default" | "custom";
@@ -22,16 +33,25 @@ type AppState = {
   defaultTemplateLoading: boolean;
   reportDate: string;
   records: SuicaRecord[];
+  commuteEntries: CommuteEntry[];
   generated: GeneratedWorkbook[];
   settings: EmployeeSettings;
+  routeProfiles: RouteProfileMap;
   ocrProgress: OcrProgress | null;
   initializeDefaultTemplate: () => Promise<void>;
   setTemplateFile: (file: File | null) => void;
   setSetting: (key: keyof EmployeeSettings, value: string) => void;
   loadPdf: (file: File) => Promise<void>;
   runOcr: () => Promise<void>;
-  toggleRecord: (id: string) => void;
-  setAllEligible: (selected: boolean) => void;
+  toggleCommuteEntry: (id: string) => void;
+  setAllCommuteEntries: (selected: boolean) => void;
+  setCommuteEntryField: (
+    id: string,
+    key: "companyName" | "workLocation",
+    value: string,
+  ) => void;
+  clearRouteProfile: (routeKey: string) => void;
+  resetRouteProfiles: () => void;
   generate: () => Promise<void>;
 };
 
@@ -53,8 +73,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   defaultTemplateLoading: false,
   reportDate: "",
   records: [],
+  commuteEntries: [],
   generated: [],
-  settings: defaultSettings,
+  settings: loadEmployeeSettings(defaultSettings),
+  routeProfiles: loadRouteProfiles(),
   ocrProgress: null,
 
   initializeDefaultTemplate: async () => {
@@ -96,7 +118,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     }),
 
   setSetting: (key, value) =>
-    set((state) => ({ settings: { ...state.settings, [key]: value } })),
+    set((state) => {
+      const settings = { ...state.settings, [key]: value };
+      saveEmployeeSettings(settings);
+      return { settings };
+    }),
 
   loadPdf: async (file) => {
     set({
@@ -104,6 +130,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       message: "PDFを解析中",
       pdfFile: file,
       records: [],
+      commuteEntries: [],
       generated: [],
       reportDate: "",
       ocrProgress: null,
@@ -117,15 +144,18 @@ export const useAppStore = create<AppState>((set, get) => ({
           message: "テキスト抽出では履歴が見つかりませんでした。",
           reportDate: result.reportDate,
           records: [],
+          commuteEntries: [],
         });
         return;
       }
 
+      const commuteEntries = hydrateCommuteEntries(result.records, get().routeProfiles);
       set({
         status: "ready",
-        message: `${result.records.length}件の履歴を抽出しました。`,
+        message: `${result.records.length}件の履歴から${commuteEntries.length}日分の通勤を作成しました。`,
         reportDate: result.reportDate,
         records: result.records,
+        commuteEntries,
       });
     } catch (error) {
       set({
@@ -146,6 +176,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       message: "OCRを実行中",
       ocrProgress: null,
       records: [],
+      commuteEntries: [],
       generated: [],
     });
 
@@ -161,6 +192,7 @@ export const useAppStore = create<AppState>((set, get) => ({
             : "OCR結果から履歴を抽出できませんでした。",
         reportDate: result.reportDate,
         records: result.records,
+        commuteEntries: hydrateCommuteEntries(result.records, get().routeProfiles),
       });
     } catch (error) {
       set({
@@ -173,50 +205,115 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  toggleRecord: (id) =>
+  toggleCommuteEntry: (id) =>
     set((state) => ({
-      records: state.records.map((record) =>
-        record.id === id && record.selectable
-          ? { ...record, selected: !record.selected }
-          : record,
+      commuteEntries: state.commuteEntries.map((entry) =>
+        entry.id === id ? { ...entry, selected: !entry.selected } : entry,
       ),
       generated: [],
     })),
 
-  setAllEligible: (selected) =>
+  setAllCommuteEntries: (selected) =>
     set((state) => ({
-      records: state.records.map((record) =>
-        record.selectable ? { ...record, selected } : record,
-      ),
+      commuteEntries: state.commuteEntries.map((entry) => ({ ...entry, selected })),
       generated: [],
     })),
+
+  setCommuteEntryField: (id, key, value) =>
+    set((state) => {
+      const target = state.commuteEntries.find((entry) => entry.id === id);
+      if (!target) {
+        return {};
+      }
+
+      const commuteEntries = state.commuteEntries.map((entry) =>
+        entry.routeKey === target.routeKey ? { ...entry, [key]: value } : entry,
+      );
+      const updated = commuteEntries.find(
+        (entry) => entry.routeKey === target.routeKey,
+      );
+      const routeProfiles = updated
+        ? setRouteProfile(
+            state.routeProfiles,
+            target.routeKey,
+            updated.companyName,
+            updated.workLocation,
+          )
+        : state.routeProfiles;
+      saveRouteProfiles(routeProfiles);
+
+      return { commuteEntries, routeProfiles, generated: [] };
+    }),
+
+  clearRouteProfile: (routeKey) =>
+    set((state) => {
+      const routeProfiles = { ...state.routeProfiles };
+      delete routeProfiles[routeKey];
+      saveRouteProfiles(routeProfiles);
+
+      return {
+        routeProfiles,
+        commuteEntries: state.commuteEntries.map((entry) =>
+          entry.routeKey === routeKey
+            ? { ...entry, companyName: "", workLocation: "" }
+            : entry,
+        ),
+        generated: [],
+      };
+    }),
+
+  resetRouteProfiles: () =>
+    set((state) => {
+      clearRouteProfiles();
+      return {
+        routeProfiles: {},
+        commuteEntries: state.commuteEntries.map((entry) => ({
+          ...entry,
+          companyName: "",
+          workLocation: "",
+        })),
+        generated: [],
+      };
+    }),
 
   generate: async () => {
-    const { records, templateFile, settings } = get();
+    const { commuteEntries, templateFile, settings } = get();
     if (!templateFile) {
       set({ status: "error", message: "テンプレートExcelを選択してください。" });
       return;
     }
 
-    const selectedRecords = records.filter((record) => record.selected);
-    if (selectedRecords.length === 0) {
-      set({ status: "error", message: "生成対象の履歴がありません。" });
+    const selectedEntries = commuteEntries.filter((entry) => entry.selected);
+    if (selectedEntries.length === 0) {
+      set({ status: "error", message: "生成対象の通勤日がありません。" });
       return;
     }
 
-    set({ status: "generating", message: "Excelを生成中", generated: [] });
+    const missingInputCount = selectedEntries.filter(
+      (entry) => !entry.companyName.trim() || !entry.workLocation.trim(),
+    ).length;
+    set({
+      status: "generating",
+      message:
+        missingInputCount > 0
+          ? `会社名または勤務場所が未入力の日が${missingInputCount}件あります。空欄のままExcelを生成中です。`
+          : "Excelを生成中",
+      generated: [],
+    });
 
     try {
-      const commuteEntries = transformCommute(selectedRecords);
       const generated = await generateTimesheets(
         templateFile,
-        commuteEntries,
+        selectedEntries,
         settings,
       );
       generated.forEach(downloadWorkbook);
       set({
         status: "ready",
-        message: `${generated.length}件のExcelを生成しました。`,
+        message:
+          missingInputCount > 0
+            ? `${generated.length}件のExcelを生成しました。未入力${missingInputCount}件は空欄で出力しました。`
+            : `${generated.length}件のExcelを生成しました。`,
         generated,
       });
     } catch (error) {
@@ -228,3 +325,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 }));
+
+function hydrateCommuteEntries(
+  records: SuicaRecord[],
+  routeProfiles: RouteProfileMap,
+): CommuteEntry[] {
+  return applyRouteProfiles(transformCommute(records), routeProfiles);
+}

@@ -62,7 +62,7 @@ export function downloadWorkbook(workbook: GeneratedWorkbook): void {
 function groupByMonth(entries: CommuteEntry[]): Map<string, CommuteEntry[]> {
   const groups = new Map<string, CommuteEntry[]>();
 
-  for (const entry of entries) {
+  for (const entry of entries.filter((item) => item.selected)) {
     const date = parseDateParts(entry.date);
     const key = `${date.year}-${String(date.month).padStart(2, "0")}`;
     const group = groups.get(key) ?? [];
@@ -99,8 +99,17 @@ function writeCommuteEntries(
   for (const entry of entries) {
     const date = parseDateParts(entry.date);
     const row = date.day + 6;
+    writeTextIfPresent(worksheet.getCell(row, 3), entry.companyName);
+    writeTextIfPresent(worksheet.getCell(row, 7), entry.workLocation);
     writeIfEmpty(worksheet.getCell(row, 22), entry.route);
     writeIfEmpty(worksheet.getCell(row, 33), entry.roundTripFare);
+  }
+}
+
+function writeTextIfPresent(cell: ExcelJS.Cell, value: string): void {
+  const trimmed = value.trim();
+  if (trimmed) {
+    writeIfEmpty(cell, trimmed);
   }
 }
 

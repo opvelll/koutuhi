@@ -22,9 +22,14 @@ describe("Excel generator", () => {
       await loadDefaultTemplate(),
       [
         {
+          id: "2023/10/24:竹ノ塚~地入谷",
           date: "2023/10/24",
           route: "竹ノ塚～地　入谷",
+          routeKey: "竹ノ塚~地入谷",
           roundTripFare: 712,
+          selected: true,
+          companyName: "山田工業㈱",
+          workLocation: "袖ヶ浦1-5-6",
         },
       ],
       defaultSettings(),
@@ -52,6 +57,8 @@ describe("Excel generator", () => {
     expect(serialOf(resultOf(worksheet.getCell("A30")))).toBe(45223);
     expect(formulaOf(worksheet.getCell("B30"))).toBe('TEXT(A30,"aaa")');
     expect(cellXmlValue(sheetXml, "B30")).toBe("火");
+    expect(worksheet.getCell("C30").value).toBe("山田工業㈱");
+    expect(worksheet.getCell("G30").value).toBe("袖ヶ浦1-5-6");
     expect(worksheet.getCell("V30").value).toBe("竹ノ塚～地　入谷");
     expect(worksheet.getCell("AG30").value).toBe(712);
     expect(formulaOf(worksheet.getCell("AA40"))).toBe("SUM($AG$7:$AG$37)");

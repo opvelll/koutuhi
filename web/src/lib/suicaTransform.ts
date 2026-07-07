@@ -16,11 +16,24 @@ export function transformCommute(records: SuicaRecord[]): CommuteEntry[] {
     grouped.set(record.date, list);
   }
 
-  return Array.from(grouped.entries()).map(([date, rows]) => ({
-    date,
-    route: buildRoute(rows),
-    roundTripFare: rows.reduce((total, row) => total + Math.abs(row.amount), 0),
-  }));
+  return Array.from(grouped.entries()).map(([date, rows]) => {
+    const route = buildRoute(rows);
+
+    return {
+      id: `${date}:${normalizeRouteKey(route)}`,
+      date,
+      route,
+      routeKey: normalizeRouteKey(route),
+      roundTripFare: rows.reduce((total, row) => total + Math.abs(row.amount), 0),
+      selected: true,
+      companyName: "",
+      workLocation: "",
+    };
+  });
+}
+
+export function normalizeRouteKey(route: string): string {
+  return route.normalize("NFKC").replace(/\s+/g, "").trim();
 }
 
 function buildRoute(rows: SuicaRecord[]): string {
@@ -65,4 +78,3 @@ function buildRoute(rows: SuicaRecord[]): string {
 
   return segments.map((segment) => segment.join("～")).join(" ");
 }
-
