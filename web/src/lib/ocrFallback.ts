@@ -11,6 +11,7 @@ import {
 } from "./suicaParser";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+const tessdataPath = `${import.meta.env.BASE_URL}tessdata`;
 
 export type OcrProgress = {
   status: string;
@@ -35,7 +36,7 @@ export async function extractSuicaWithOcr(
   const worker = await createWorker("jpn", 1, {
     workerPath: tesseractWorkerUrl,
     corePath: tesseractCoreUrl,
-    langPath: "/tessdata",
+    langPath: tessdataPath,
     logger: (message: OcrProgress) => onProgress?.(message),
   });
 
