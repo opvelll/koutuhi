@@ -14,8 +14,6 @@
     "pdfjs-dist": "6.1.200",
     "react": "19.2.7",
     "react-dom": "19.2.7",
-    "tesseract.js": "7.0.0",
-    "tesseract.js-core": "7.0.0",
     "zustand": "5.0.14"
   },
   "devDependencies": {

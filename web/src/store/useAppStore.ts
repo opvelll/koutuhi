@@ -9,7 +9,6 @@ import type {
   SuicaRecord,
 } from "../types";
 import { downloadWorkbook, generateTimesheets } from "../lib/excelGenerator";
-import { extractSuicaWithOcr, type OcrProgress } from "../lib/ocrFallback";
 import { extractSuicaFromPdfFile } from "../lib/pdfTextExtractor";
 import {
   applyRouteProfiles,
@@ -37,12 +36,10 @@ type AppState = {
   generated: GeneratedWorkbook[];
   settings: EmployeeSettings;
   routeProfiles: RouteProfileMap;
-  ocrProgress: OcrProgress | null;
   initializeDefaultTemplate: () => Promise<void>;
   setTemplateFile: (file: File | null) => void;
   setSetting: (key: keyof EmployeeSettings, value: string) => void;
   loadPdf: (file: File) => Promise<void>;
-  runOcr: () => Promise<void>;
   toggleCommuteEntry: (id: string) => void;
   setAllCommuteEntries: (selected: boolean) => void;
   setCommuteEntryField: (
@@ -77,7 +74,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   generated: [],
   settings: loadEmployeeSettings(defaultSettings),
   routeProfiles: loadRouteProfiles(),
-  ocrProgress: null,
 
   initializeDefaultTemplate: async () => {
     const { defaultTemplateLoading, templateFile } = get();
@@ -133,15 +129,15 @@ export const useAppStore = create<AppState>((set, get) => ({
       commuteEntries: [],
       generated: [],
       reportDate: "",
-      ocrProgress: null,
     });
 
     try {
       const result = await extractSuicaFromPdfFile(file);
       if (result.records.length === 0) {
         set({
-          status: "ocr-ready",
-          message: "テキスト抽出では履歴が見つかりませんでした。",
+          status: "error",
+          message:
+            "履歴を読み取れませんでした。モバイルSuicaのSF（電子マネー）利用履歴から保存した、文字を選択できるPDFか確認してください。",
           reportDate: result.reportDate,
           records: [],
           commuteEntries: [],
@@ -161,46 +157,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({
         status: "error",
         message: error instanceof Error ? error.message : "PDF解析に失敗しました。",
-      });
-    }
-  },
-
-  runOcr: async () => {
-    const { pdfFile } = get();
-    if (!pdfFile) {
-      return;
-    }
-
-    set({
-      status: "ocr-running",
-      message: "OCRを実行中",
-      ocrProgress: null,
-      records: [],
-      commuteEntries: [],
-      generated: [],
-    });
-
-    try {
-      const result = await extractSuicaWithOcr(pdfFile, (progress) =>
-        set({ ocrProgress: progress }),
-      );
-      set({
-        status: result.records.length > 0 ? "ready" : "error",
-        message:
-          result.records.length > 0
-            ? `${result.records.length}件の履歴をOCRで抽出しました。`
-            : "OCR結果から履歴を抽出できませんでした。",
-        reportDate: result.reportDate,
-        records: result.records,
-        commuteEntries: hydrateCommuteEntries(result.records, get().routeProfiles),
-      });
-    } catch (error) {
-      set({
-        status: "error",
-        message:
-          error instanceof Error
-            ? error.message
-            : "OCRフォールバックに失敗しました。",
       });
     }
   },

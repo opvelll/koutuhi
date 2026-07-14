@@ -26,15 +26,22 @@ const transportPattern = new RegExp(
     `(.+?)\\s+` +
     `(${kindPattern})\\s+` +
     `(.+?)\\s+` +
-    `(${yenPattern})\\s+` +
+    `(?:(${yenPattern})\\s+)?` +
     `([+-][\\d,]+)`,
 );
 
-const otherPattern = new RegExp(
+const otherWithBalancePattern = new RegExp(
   `^(\\d{1,2})\\s+(\\d{1,2})\\s+` +
     `(\\S+)\\s+` +
     `(${yenPattern})\\s*` +
     `([+-][\\d,]+)?`,
+);
+
+const otherWithAmountPattern = new RegExp(
+  `^(\\d{1,2})\\s+(\\d{1,2})\\s+` +
+    `(\\S+)` +
+    `(?:\\s+.*?)?\\s+` +
+    `([+-][\\d,]+)\\s*$`,
 );
 
 export function extractHistoryDate(text: string): string {
@@ -63,8 +70,17 @@ export function parseSuicaHistoryText(lines: string[]): SuicaRecord[] {
 
     const transport = line.match(transportPattern);
     if (transport) {
-      const [, month, day, type1, station1, type2, station2, balance, amount] =
-        transport;
+      const [
+        ,
+        month,
+        day,
+        type1,
+        station1,
+        type2,
+        station2,
+        balance = "0",
+        amount,
+      ] = transport;
       records.push(
         createRecord(records.length, {
           month,
@@ -80,9 +96,9 @@ export function parseSuicaHistoryText(lines: string[]): SuicaRecord[] {
       continue;
     }
 
-    const other = line.match(otherPattern);
-    if (other) {
-      const [, month, day, type1, balance, amount = "0"] = other;
+    const otherWithBalance = line.match(otherWithBalancePattern);
+    if (otherWithBalance) {
+      const [, month, day, type1, balance, amount = "0"] = otherWithBalance;
       records.push(
         createRecord(records.length, {
           month,
@@ -92,6 +108,24 @@ export function parseSuicaHistoryText(lines: string[]): SuicaRecord[] {
           type2: "",
           station2: "",
           balance,
+          amount,
+        }),
+      );
+      continue;
+    }
+
+    const otherWithAmount = line.match(otherWithAmountPattern);
+    if (otherWithAmount) {
+      const [, month, day, type1, amount] = otherWithAmount;
+      records.push(
+        createRecord(records.length, {
+          month,
+          day,
+          type1,
+          station1: "",
+          type2: "",
+          station2: "",
+          balance: "0",
           amount,
         }),
       );
@@ -173,4 +207,3 @@ function parseYenNumber(value: string): number {
   const normalized = value.replace(/[\\¥,]/g, "").trim();
   return Number(normalized || "0");
 }
-

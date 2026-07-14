@@ -100,7 +100,7 @@ export function GuidePage({ onOpenMain }: { onOpenMain: () => void }) {
           「Suica利用履歴PDFを選択」ボタンから保存したPDFを選びます。読み込みが完了すると、履歴件数、通勤日、対象年月が表示されます。
         </p>
         <p className="mt-3 text-sm leading-7 text-slate-700">
-          通常はPDFに含まれる文字を直接読み取ります。文字を読み取れない画像PDFでは「OCRでPDFを再読み込み」が表示されます。
+          PDFに含まれる文字をブラウザ内で直接読み取ります。画像として保存されたPDFは読み込めません。
         </p>
       </GuideSection>
 
@@ -147,7 +147,7 @@ export function GuidePage({ onOpenMain }: { onOpenMain: () => void }) {
       <GuideSection icon={<ShieldCheck className="h-5 w-5" />} title="ファイルと保存データについて">
         <div className="space-y-4 text-sm leading-7 text-slate-700">
           <p>
-            選択したPDFとExcelテンプレートは、このブラウザ内だけで処理します。外部API、外部OCRサービス、CDNへファイルを送信しません。
+            選択したPDFとExcelテンプレートは、このブラウザ内だけで処理します。外部APIやCDNへファイルを送信しません。
           </p>
           <p>
             支社、社員ID、氏名、経路ごとの会社名と勤務場所は、このブラウザの保存領域に記録されます。別の端末や別のブラウザには引き継がれません。
@@ -158,7 +158,7 @@ export function GuidePage({ onOpenMain }: { onOpenMain: () => void }) {
       <GuideSection icon={<HelpCircle className="h-5 w-5" />} title="よくある質問">
         <div className="space-y-3">
           <Faq question="PDFを読み込んでも履歴が表示されません">
-            モバイルSuicaの「SF（電子マネー）利用履歴」から保存したPDFか確認してください。画像として保存されたPDFの場合は、表示されるOCR再読み込みを試してください。
+            モバイルSuicaの「SF（電子マネー）利用履歴」から直接保存した、文字を選択できるPDFか確認してください。画像として保存されたPDFは読み込めません。
           </Faq>
           <Faq question="会社名や勤務場所が自動で入るのはなぜですか">
             前回入力した内容を通勤経路ごとに保存しているためです。ステップ2の削除操作から保存値を消せます。

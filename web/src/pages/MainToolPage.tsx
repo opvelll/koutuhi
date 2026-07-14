@@ -4,7 +4,6 @@ import {
   FileSpreadsheet,
   Play,
   Printer,
-  RotateCcw,
   Square,
   Trash2,
   Upload,
@@ -31,10 +30,8 @@ export function MainToolPage() {
     generated,
     settings,
     routeProfiles,
-    ocrProgress,
     initializeDefaultTemplate,
     loadPdf,
-    runOcr,
     setTemplateFile,
     setSetting,
     toggleCommuteEntry,
@@ -54,7 +51,7 @@ export function MainToolPage() {
     (entry) => !entry.companyName.trim() || !entry.workLocation.trim(),
   ).length;
   const isBusy =
-    status === "extracting" || status === "ocr-running" || status === "generating";
+    status === "extracting" || status === "generating";
   const canGenerate = selectedCount > 0 && Boolean(templateFile) && !isBusy;
   const templateTitle =
     templateSource === "default"
@@ -109,21 +106,6 @@ export function MainToolPage() {
             Suica利用履歴PDFを選択
           </button>
           <FileName label="選択中のPDF" value={pdfFile?.name} />
-          {status === "ocr-ready" ? (
-            <div className="rounded-lg border border-amber-300 bg-amber-50 p-4">
-              <p className="mb-3 text-sm leading-6 text-amber-950">
-                PDF内の文字を読み取れませんでした。画像として保存されたPDFの場合はOCRをお試しください。
-              </p>
-              <button
-                className="flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-amber-400 bg-white px-4 text-sm font-semibold text-amber-950 hover:bg-amber-100"
-                type="button"
-                onClick={() => void runOcr()}
-              >
-                <RotateCcw className="h-4 w-4" />
-                OCRでPDFを再読み込み
-              </button>
-            </div>
-          ) : null}
         </div>
 
         <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -133,7 +115,7 @@ export function MainToolPage() {
           <Metric label="対象年月" value={reportDate || "-"} compact />
         </div>
 
-        <StatusMessage message={message} ocrProgress={ocrProgress} />
+        <StatusMessage message={message} />
       </StepSection>
 
       <StepSection
@@ -421,21 +403,10 @@ function StepSection({
   );
 }
 
-function StatusMessage({
-  message,
-  ocrProgress,
-}: {
-  message: string;
-  ocrProgress: { status: string; progress: number } | null;
-}) {
+function StatusMessage({ message }: { message: string }) {
   return (
     <div className="mt-5 min-h-7 rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-700">
       {message || "PDFを選択すると、ここに処理状況が表示されます。"}
-      {ocrProgress ? (
-        <span className="ml-2 text-slate-500">
-          {ocrProgress.status} {Math.round(ocrProgress.progress * 100)}%
-        </span>
-      ) : null}
     </div>
   );
 }

@@ -2,8 +2,6 @@ export type ExtractStatus =
   | "idle"
   | "extracting"
   | "ready"
-  | "ocr-ready"
-  | "ocr-running"
   | "generating"
   | "error";
 

@@ -11,7 +11,7 @@ export default function App() {
   const [page, setPage] = useState<Page>("main");
   const status = useAppStore((state) => state.status);
   const isBusy =
-    status === "extracting" || status === "ocr-running" || status === "generating";
+    status === "extracting" || status === "generating";
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -106,21 +106,15 @@ function StatusPill({ status }: { status: string }) {
         ? "PDF解析中"
         : status === "ready"
           ? "準備完了"
-          : status === "ocr-ready"
-            ? "OCR待機"
-            : status === "ocr-running"
-              ? "OCR処理中"
-              : status === "generating"
-                ? "Excel作成中"
-                : "エラー";
+          : status === "generating"
+            ? "Excel作成中"
+            : "エラー";
   const tone =
     status === "ready"
       ? "bg-emerald-50 text-emerald-800 ring-emerald-200"
       : status === "error"
         ? "bg-red-50 text-red-800 ring-red-200"
-        : status === "ocr-ready"
-          ? "bg-amber-50 text-amber-900 ring-amber-200"
-          : "bg-slate-100 text-slate-700 ring-slate-200";
+        : "bg-slate-100 text-slate-700 ring-slate-200";
 
   return (
     <span className={`rounded-full px-3 py-1 text-xs ring-1 ${tone}`}>

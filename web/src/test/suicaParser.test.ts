@@ -61,4 +61,72 @@ describe("Suica history parser", () => {
       },
     ]);
   });
+
+  it("parses the new history format without a balance column", () => {
+    const records = addYearToDates(
+      parseSuicaHistoryText([
+        "06 22 入 竹ノ塚 出 東武浅草 -261",
+        "06 22 入 東武浅草 出 竹ノ塚 -261",
+      ]),
+      "2026/7/14",
+    );
+
+    expect(records).toMatchObject([
+      {
+        date: "2026/06/22",
+        station1: "竹ノ塚",
+        station2: "東武浅草",
+        amount: -261,
+        balance: 0,
+      },
+      {
+        date: "2026/06/22",
+        station1: "東武浅草",
+        station2: "竹ノ塚",
+        amount: -261,
+        balance: 0,
+      },
+    ]);
+    expect(transformCommute(records)).toMatchObject([
+      {
+        date: "2026/06/22",
+        route: "竹ノ塚～東武浅草",
+        roundTripFare: 522,
+      },
+    ]);
+  });
+
+  it("keeps supporting balance-bearing and mixed history formats", () => {
+    const records = parseSuicaHistoryText([
+      "06 22 入 竹ノ塚 出 東武浅草 \\2,233 -261",
+      "06 22 入 東武浅草 出 竹ノ塚 -261",
+    ]);
+
+    expect(records.map(({ balance, amount }) => ({ balance, amount }))).toEqual([
+      { balance: 2233, amount: -261 },
+      { balance: 0, amount: -261 },
+    ]);
+  });
+
+  it("parses non-transport rows without selecting them for commuting", () => {
+    const records = addYearToDates(
+      parseSuicaHistoryText([
+        "06 25 現金 +1,000",
+        "06 25 物販 -500",
+        "06 29 ﾊﾞｽ等 都電都Ｂ -210",
+        "07 08 現金 \\1,000",
+      ]),
+      "2026/7/14",
+    );
+
+    expect(records).toHaveLength(4);
+    expect(records.map((record) => record.date)).toEqual([
+      "2026/06/25",
+      "2026/06/25",
+      "2026/06/29",
+      "2026/07/08",
+    ]);
+    expect(records.every((record) => !record.selectable)).toBe(true);
+    expect(transformCommute(records)).toEqual([]);
+  });
 });
