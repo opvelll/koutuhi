@@ -47,6 +47,11 @@ type AppState = {
     key: "companyName" | "workLocation",
     value: string,
   ) => void;
+  setCommuteRouteField: (
+    routeKey: string,
+    key: "companyName" | "workLocation",
+    value: string,
+  ) => void;
   clearRouteProfile: (routeKey: string) => void;
   resetRouteProfiles: () => void;
   generate: () => Promise<void>;
@@ -196,6 +201,27 @@ export const useAppStore = create<AppState>((set, get) => ({
             updated.workLocation,
           )
         : state.routeProfiles;
+      saveRouteProfiles(routeProfiles);
+
+      return { commuteEntries, routeProfiles, generated: [] };
+    }),
+
+  setCommuteRouteField: (routeKey, key, value) =>
+    set((state) => {
+      const commuteEntries = state.commuteEntries.map((entry) =>
+        entry.routeKey === routeKey ? { ...entry, [key]: value } : entry,
+      );
+      const updated = commuteEntries.find((entry) => entry.routeKey === routeKey);
+      if (!updated) {
+        return {};
+      }
+
+      const routeProfiles = setRouteProfile(
+        state.routeProfiles,
+        routeKey,
+        updated.companyName,
+        updated.workLocation,
+      );
       saveRouteProfiles(routeProfiles);
 
       return { commuteEntries, routeProfiles, generated: [] };
