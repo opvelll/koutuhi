@@ -61,7 +61,7 @@ export function GuidePage({ onOpenMain }: { onOpenMain: () => void }) {
         <ul className="space-y-3 text-sm leading-7 text-slate-700">
           <li>・モバイルSuicaから保存した「SF（電子マネー）利用履歴」のPDF</li>
           <li>・Excelへ記載する支社、社員ID、氏名</li>
-          <li>・各通勤経路に対応する会社名と勤務場所</li>
+          <li>・各通勤経路に対応する勤務先テンプレート</li>
         </ul>
         <div className="mt-5 border-l-4 border-blue-500 bg-blue-50 px-4 py-3 text-sm leading-6 text-blue-950">
           サンエスExcelテンプレートは最初から用意されています。通常はExcelファイルを別途準備する必要はありません。
@@ -109,11 +109,11 @@ export function GuidePage({ onOpenMain }: { onOpenMain: () => void }) {
           items={[
             "交通費請求に含める日だけ、選択欄をオンにします。",
             "日付、通勤経路、往復交通費が正しいか確認します。",
-            "経路ごとの入力情報で会社名と勤務場所を入力します。入力内容は通勤経路ごとに自動保存されます。",
+            "経路ごとの入力情報で勤務先テンプレートを選びます。選択しない経路は勤務先情報が空欄で出力されます。",
           ]}
         />
         <p className="mt-5 border-l-2 border-slate-300 pl-4 text-sm leading-6 text-slate-700">
-          同じ通勤経路を次回読み込むと、保存済みの会社名と勤務場所が自動で入ります。不要になった保存値は「保存した入力情報を管理」から削除できます。
+          勤務先テンプレートは上部ナビから登録・編集・削除できます。通勤経路から新しい勤務先テンプレートを作成することもできます。
         </p>
       </GuideSection>
 
@@ -122,12 +122,12 @@ export function GuidePage({ onOpenMain }: { onOpenMain: () => void }) {
           items={[
             "支社、社員ID、氏名を確認します。これらはブラウザに保存されます。",
             "現在のExcelテンプレートを確認します。通常は既定のサンエステンプレートを使用します。",
-            "未入力の注意が表示されている場合は内容を確認し、「交通費請求書Excelを作成」を押します。",
+            "勤務先テンプレートの選択内容を確認し、「交通費請求書Excelを作成」を押します。",
             "作成後に表示されるダウンロードボタンからExcelを保存します。",
           ]}
         />
         <div className="mt-5 border-l-4 border-amber-500 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950">
-          会社名または勤務場所が空欄でもExcelは作成できますが、該当欄は空欄になります。
+          勤務先テンプレートが未選択の経路は、会社名・勤務場所・勤務時間が空欄で出力されます。
         </div>
       </GuideSection>
 
@@ -161,13 +161,13 @@ export function GuidePage({ onOpenMain }: { onOpenMain: () => void }) {
             モバイルSuicaの「SF（電子マネー）利用履歴」から直接保存した、文字を選択できるPDFか確認してください。画像として保存されたPDFは読み込めません。
           </Faq>
           <Faq question="会社名や勤務場所が自動で入るのはなぜですか">
-            前回入力した内容を通勤経路ごとに保存しているためです。ステップ2の削除操作から保存値を消せます。
+            選択した勤務先テンプレートの内容を、同じ通勤経路の申請データへ反映しているためです。
           </Faq>
           <Faq question="別のExcelテンプレートを使えますか">
             ステップ3の「Excelテンプレートを変更」からXLSXファイルを選択できます。テンプレートのシート構成が異なる場合は正しく出力できないことがあります。
           </Faq>
-          <Faq question="未入力の項目があっても作成できますか">
-            作成できます。ただし、会社名または勤務場所の未入力欄は空欄で出力されるため、ダウンロード後に必ず確認してください。
+          <Faq question="勤務先テンプレートが未選択でも作成できますか">
+            作成できます。ただし、未選択の経路は会社名・勤務場所・勤務時間が空欄で出力されます。
           </Faq>
           <Faq question="ファイルはインターネットへ送信されますか">
             送信されません。PDFの解析とExcel作成はブラウザ内で行います。

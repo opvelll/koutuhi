@@ -12,19 +12,26 @@ import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { downloadWorkbook } from "../lib/excelGenerator";
-import { groupCommuteEntriesByRoute } from "../lib/commuteRoutes";
+import { groupSelectedCommuteEntriesByRoute } from "../lib/commuteRoutes";
 import { useAppStore } from "../store/useAppStore";
+import type { CompanyDataInput } from "../types";
 
 type WorkflowStep = 1 | 2 | 3;
 
-export function MainToolPage() {
+export function MainToolPage({
+  onOpenCompanyData,
+}: {
+  onOpenCompanyData: (initialInput?: CompanyDataInput) => void;
+}) {
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const templateInputRef = useRef<HTMLInputElement>(null);
-  const [activeStep, setActiveStep] = useState<WorkflowStep>(1);
+  const [activeStep, setActiveStep] = useState<WorkflowStep>(() =>
+    useAppStore.getState().commuteEntries.length > 0 ? 2 : 1,
+  );
   const {
     status,
     message,
-    pdfFile,
+    pdfFileName,
     templateFile,
     templateSource,
     defaultTemplateLoading,
@@ -33,13 +40,17 @@ export function MainToolPage() {
     generated,
     settings,
     routeProfiles,
+    companyData,
     initializeDefaultTemplate,
     loadPdf,
+    clearCurrentEditingData,
     setTemplateFile,
     setSetting,
     toggleCommuteEntry,
     setAllCommuteEntries,
     setCommuteRouteField,
+    applyCompanyDataToRoute,
+    clearCompanyDataSelection,
     clearRouteProfile,
     resetRouteProfiles,
     generate,
@@ -50,15 +61,23 @@ export function MainToolPage() {
     [commuteEntries],
   );
   const routeRows = useMemo(
-    () => groupCommuteEntriesByRoute(commuteEntries),
+    () => groupSelectedCommuteEntriesByRoute(commuteEntries),
     [commuteEntries],
   );
   const selectedCount = selectedEntries.length;
+  const missingTemplateCount = new Set(
+    selectedEntries
+      .filter((entry) => !entry.companyDataId)
+      .map((entry) => entry.routeKey),
+  ).size;
   const missingInputCount = selectedEntries.filter(
-    (entry) => !entry.companyName.trim() || !entry.workLocation.trim(),
+    (entry) => !entry.companyDataId,
   ).length;
   const isBusy = status === "extracting" || status === "generating";
-  const canGenerate = selectedCount > 0 && Boolean(templateFile) && !isBusy;
+  const canGenerate =
+    selectedCount > 0 &&
+    Boolean(templateFile) &&
+    !isBusy;
   const templateTitle =
     templateSource === "default"
       ? "サンエスExcelテンプレート"
@@ -79,8 +98,39 @@ export function MainToolPage() {
     }
   }
 
+  function openPdfPicker() {
+    if (!pdfInputRef.current) {
+      return;
+    }
+
+    pdfInputRef.current.value = "";
+    pdfInputRef.current.click();
+  }
+
+  function handleClearCurrentEditingData() {
+    if (!window.confirm("編集中のPDFデータと入力内容をクリアしますか？")) {
+      return;
+    }
+
+    clearCurrentEditingData();
+    if (pdfInputRef.current) {
+      pdfInputRef.current.value = "";
+    }
+    setActiveStep(1);
+  }
+
   return (
     <main className="mx-auto max-w-[1280px] px-4 py-8 sm:px-6 sm:py-12">
+      <input
+        ref={pdfInputRef}
+        className="hidden"
+        type="file"
+        accept="application/pdf,.pdf"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          if (file) void handlePdf(file);
+        }}
+      />
       <div className="divide-y divide-slate-200">
         <Step
           active={activeStep === 1}
@@ -96,31 +146,25 @@ export function MainToolPage() {
           onOpen={() => setActiveStep(1)}
         >
           <div className="max-w-2xl space-y-4">
-            <input
-              ref={pdfInputRef}
-              className="hidden"
-              type="file"
-              accept="application/pdf,.pdf"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) void handlePdf(file);
-              }}
-            />
             <button
               className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-5 text-base font-semibold text-white hover:bg-blue-600 disabled:cursor-not-allowed disabled:bg-slate-300 sm:w-auto"
               disabled={isBusy}
               type="button"
-              onClick={() => pdfInputRef.current?.click()}
+              onClick={openPdfPicker}
             >
               {status === "extracting" ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
               ) : (
                 <Upload className="h-5 w-5" />
               )}
-              {status === "extracting" ? "PDFを読み込み中" : "Suica利用履歴PDFを選択"}
+              {status === "extracting"
+                ? "PDFを読み込み中"
+                : commuteEntries.length > 0
+                  ? "別のSuica利用履歴PDFを選択"
+                  : "Suica利用履歴PDFを選択"}
             </button>
-            {pdfFile ? (
-              <p className="text-sm text-slate-600">選択中：{pdfFile.name}</p>
+            {pdfFileName ? (
+              <p className="text-sm text-slate-600">選択中：{pdfFileName}</p>
             ) : null}
             {status === "error" && activeStep === 1 ? (
               <InlineMessage tone="error">{message}</InlineMessage>
@@ -138,6 +182,32 @@ export function MainToolPage() {
           onOpen={() => setActiveStep(2)}
         >
           <div className="space-y-12">
+            <div className="flex flex-col gap-3 rounded-lg bg-slate-100/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="min-w-0 truncate text-sm text-slate-600">
+                編集中：{pdfFileName || "読み込み済みPDF"}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  className="inline-flex h-9 items-center gap-2 rounded-md bg-white px-3 text-sm font-medium text-blue-700 shadow-sm hover:bg-blue-50 disabled:text-slate-400"
+                  disabled={isBusy}
+                  type="button"
+                  onClick={openPdfPicker}
+                >
+                  <Upload className="h-4 w-4" />
+                  別のPDFを選択
+                </button>
+                <button
+                  className="inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm font-medium text-red-700 hover:bg-red-50 disabled:text-slate-400"
+                  disabled={isBusy}
+                  type="button"
+                  onClick={handleClearCurrentEditingData}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  編集中データをクリア
+                </button>
+              </div>
+            </div>
+
             <section aria-labelledby="target-days-heading">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div>
@@ -205,48 +275,109 @@ export function MainToolPage() {
               <div>
                 <h3 className="text-lg font-semibold" id="route-information-heading">経路ごとの入力情報</h3>
                 <p className="mt-1 text-sm text-slate-600">
-                  同じ経路の会社名と勤務場所はまとめて保存され、次回も自動で入ります。
+                  通勤経路ごとに勤務先テンプレートを選択します。登録がない場合は、この通勤経路から作成してください。
                 </p>
               </div>
 
+              {routeRows.length > 0 ? (
               <div className="mt-5 overflow-x-auto border-y border-slate-200">
-                <table className="w-full min-w-[860px] border-collapse text-sm">
+                <table className="w-full min-w-[680px] border-collapse text-sm">
                   <thead className="bg-slate-100/70 text-left text-xs font-semibold text-slate-600">
                     <tr>
-                      <th className="px-4 py-3">通勤経路</th>
-                      <th className="w-64 px-4 py-3">会社名</th>
-                      <th className="w-72 px-4 py-3">勤務場所</th>
+                      <th className="w-72 px-4 py-3">通勤経路</th>
+                      <th className="px-4 py-3">勤務先テンプレート</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 bg-white/60">
                     {routeRows.map((entry) => (
                       <tr key={entry.routeKey}>
-                        <td className="px-4 py-4 font-medium text-slate-800">{entry.route}</td>
-                        <td className="px-4 py-3">
-                          <input
-                            aria-label={`${entry.route}の会社名`}
+                        <td className="px-4 py-4 align-top font-medium text-slate-800">{entry.route}</td>
+                        <td className="px-4 py-3 align-top">
+                          <select
+                            aria-label={`${entry.route}の勤務先テンプレート`}
                             className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 outline-none focus:border-blue-600"
-                            value={entry.companyName}
-                            onChange={(event) =>
-                              setCommuteRouteField(entry.routeKey, "companyName", event.target.value)
-                            }
-                          />
-                        </td>
-                        <td className="px-4 py-3">
-                          <input
-                            aria-label={`${entry.route}の勤務場所`}
-                            className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 outline-none focus:border-blue-600"
-                            value={entry.workLocation}
-                            onChange={(event) =>
-                              setCommuteRouteField(entry.routeKey, "workLocation", event.target.value)
-                            }
-                          />
+                            value={entry.companyDataId ?? ""}
+                            onChange={(event) => {
+                              if (event.target.value) {
+                                applyCompanyDataToRoute(entry.routeKey, event.target.value);
+                              } else {
+                                clearCompanyDataSelection(entry.routeKey);
+                              }
+                            }}
+                          >
+                            <option value="">選択しない（空欄で出力）</option>
+                            {companyData.map((record) => (
+                              <option key={record.id} value={record.id}>
+                                {record.companyName}
+                                {record.workLocation ? ` / ${record.workLocation}` : ""}
+                                （{record.commuteRoute}）
+                              </option>
+                            ))}
+                          </select>
+                          {entry.companyDataId ? (
+                            <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50/60 p-4">
+                              <p className="text-xs leading-5 text-slate-600">
+                                今回の出力内容を編集できます。登録済みの勤務先テンプレート本体は変更されません。
+                              </p>
+                              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                                <TextField
+                                  label="会社名"
+                                  value={entry.companyName}
+                                  onChange={(value) => setCommuteRouteField(entry.routeKey, "companyName", value)}
+                                />
+                                <TextField
+                                  label="勤務場所"
+                                  value={entry.workLocation}
+                                  onChange={(value) => setCommuteRouteField(entry.routeKey, "workLocation", value)}
+                                />
+                                <TextField
+                                  label="勤務開始"
+                                  type="time"
+                                  value={entry.startTime}
+                                  onChange={(value) => setCommuteRouteField(entry.routeKey, "startTime", value)}
+                                />
+                                <TextField
+                                  label="勤務終了"
+                                  type="time"
+                                  value={entry.endTime}
+                                  onChange={(value) => setCommuteRouteField(entry.routeKey, "endTime", value)}
+                                />
+                              </div>
+                            </div>
+                          ) : null}
+                          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                            <span className="text-slate-400">または</span>
+                            <button
+                              className="font-medium text-blue-700 hover:text-blue-900"
+                              type="button"
+                              onClick={() => onOpenCompanyData({
+                                companyName: entry.companyName,
+                                workLocation: entry.workLocation,
+                                commuteRoute: entry.route,
+                                startTime: entry.startTime,
+                                endTime: entry.endTime,
+                              })}
+                            >
+                              この通勤経路から勤務先テンプレートを作成
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
+              ) : (
+                <p className="mt-5 border-y border-slate-200 px-4 py-6 text-sm text-slate-500">
+                  出力対象の日を選択すると、該当する通勤経路が表示されます。
+                </p>
+              )}
+
+              {missingTemplateCount > 0 ? (
+                <p className="mt-4 border-l-4 border-amber-500 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950">
+                  出力対象の{missingTemplateCount}経路は、会社名・勤務場所・勤務時間が空欄で出力されます。
+                </p>
+              ) : null}
 
               <details className="mt-4 text-sm text-slate-600">
                 <summary className="w-fit cursor-pointer font-medium text-slate-700 hover:text-blue-700">
@@ -343,7 +474,7 @@ export function MainToolPage() {
 
             {missingInputCount > 0 ? (
               <InlineMessage tone="warning">
-                会社名または勤務場所が未入力の日が{missingInputCount}日あります。未入力欄は空欄で出力されます。
+                勤務先テンプレート未選択または入力不足の日が{missingInputCount}日あります。勤務先情報は空欄で出力されます。
               </InlineMessage>
             ) : null}
 
@@ -456,10 +587,12 @@ function InlineMessage({ tone, children }: { tone: "error" | "warning"; children
 
 function TextField({
   label,
+  type = "text",
   value,
   onChange,
 }: {
   label: string;
+  type?: "text" | "time";
   value: string;
   onChange: (value: string) => void;
 }) {
@@ -468,6 +601,7 @@ function TextField({
       {label}
       <input
         className="h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-950 outline-none focus:border-blue-600"
+        type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}
       />

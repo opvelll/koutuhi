@@ -99,11 +99,44 @@ function writeCommuteEntries(
   for (const entry of entries) {
     const date = parseDateParts(entry.date);
     const row = date.day + 6;
-    writeTextIfPresent(worksheet.getCell(row, 3), entry.companyName);
-    writeTextIfPresent(worksheet.getCell(row, 7), entry.workLocation);
+    if (entry.companyDataId) {
+      writeTextIfPresent(worksheet.getCell(row, 3), entry.companyName);
+      writeTextIfPresent(worksheet.getCell(row, 7), entry.workLocation);
+      writeTimeIfPresent(worksheet, row, 13, entry.startTime);
+      writeTimeIfPresent(worksheet, row, 17, entry.endTime);
+    } else {
+      clearCommuteDetails(worksheet, row);
+    }
     writeIfEmpty(worksheet.getCell(row, 22), entry.route);
     writeIfEmpty(worksheet.getCell(row, 33), entry.roundTripFare);
   }
+}
+
+function clearCommuteDetails(worksheet: ExcelJS.Worksheet, row: number): void {
+  for (const column of [3, 7, 13, 15, 17, 19]) {
+    worksheet.getCell(row, column).value = null;
+  }
+}
+
+function writeTimeIfPresent(
+  worksheet: ExcelJS.Worksheet,
+  row: number,
+  hourColumn: number,
+  value: string,
+): void {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(value);
+  if (!match) {
+    return;
+  }
+
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour > 23 || minute > 59) {
+    return;
+  }
+
+  writeIfEmpty(worksheet.getCell(row, hourColumn), hour);
+  writeIfEmpty(worksheet.getCell(row, hourColumn + 2), minute);
 }
 
 function writeTextIfPresent(cell: ExcelJS.Cell, value: string): void {

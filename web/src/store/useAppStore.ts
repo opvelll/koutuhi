@@ -1,6 +1,8 @@
 import { create } from "zustand";
 
 import type {
+  CompanyData,
+  CompanyDataInput,
   CommuteEntry,
   EmployeeSettings,
   ExtractStatus,
@@ -8,7 +10,18 @@ import type {
   RouteProfileMap,
   SuicaRecord,
 } from "../types";
+import {
+  loadCompanyData,
+  removeCompanyData,
+  saveCompanyData,
+  upsertCompanyData,
+} from "../lib/companyData";
 import { downloadWorkbook, generateTimesheets } from "../lib/excelGenerator";
+import {
+  clearEditingDraft,
+  loadEditingDraft,
+  saveEditingDraft,
+} from "../lib/editingDraft";
 import { extractSuicaFromPdfFile } from "../lib/pdfTextExtractor";
 import {
   applyRouteProfiles,
@@ -27,6 +40,7 @@ type AppState = {
   status: ExtractStatus;
   message: string;
   pdfFile: File | null;
+  pdfFileName: string;
   templateFile: File | null;
   templateSource: TemplateSource | null;
   defaultTemplateLoading: boolean;
@@ -36,22 +50,28 @@ type AppState = {
   generated: GeneratedWorkbook[];
   settings: EmployeeSettings;
   routeProfiles: RouteProfileMap;
+  companyData: CompanyData[];
   initializeDefaultTemplate: () => Promise<void>;
   setTemplateFile: (file: File | null) => void;
   setSetting: (key: keyof EmployeeSettings, value: string) => void;
   loadPdf: (file: File) => Promise<void>;
+  clearCurrentEditingData: () => void;
   toggleCommuteEntry: (id: string) => void;
   setAllCommuteEntries: (selected: boolean) => void;
   setCommuteEntryField: (
     id: string,
-    key: "companyName" | "workLocation",
+    key: "companyName" | "workLocation" | "startTime" | "endTime",
     value: string,
   ) => void;
   setCommuteRouteField: (
     routeKey: string,
-    key: "companyName" | "workLocation",
+    key: "companyName" | "workLocation" | "startTime" | "endTime",
     value: string,
   ) => void;
+  saveCompanyDataEntry: (input: CompanyDataInput, id?: string) => string;
+  deleteCompanyDataEntry: (id: string) => void;
+  applyCompanyDataToRoute: (routeKey: string, companyDataId: string) => void;
+  clearCompanyDataSelection: (routeKey: string) => void;
   clearRouteProfile: (routeKey: string) => void;
   resetRouteProfiles: () => void;
   generate: () => Promise<void>;
@@ -65,20 +85,23 @@ const defaultSettings: EmployeeSettings = {
 const defaultTemplateUrl = `${import.meta.env.BASE_URL}templates/default-timesheet.xlsx`;
 const templateMimeType =
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+const initialEditingDraft = loadEditingDraft();
 
 export const useAppStore = create<AppState>((set, get) => ({
-  status: "idle",
-  message: "",
+  status: initialEditingDraft ? "ready" : "idle",
+  message: initialEditingDraft ? "前回の編集中データを復元しました。" : "",
   pdfFile: null,
+  pdfFileName: initialEditingDraft?.pdfFileName ?? "",
   templateFile: null,
   templateSource: null,
   defaultTemplateLoading: false,
-  reportDate: "",
-  records: [],
-  commuteEntries: [],
+  reportDate: initialEditingDraft?.reportDate ?? "",
+  records: initialEditingDraft?.records ?? [],
+  commuteEntries: initialEditingDraft?.commuteEntries ?? [],
   generated: [],
   settings: loadEmployeeSettings(defaultSettings),
   routeProfiles: loadRouteProfiles(),
+  companyData: loadCompanyData(),
 
   initializeDefaultTemplate: async () => {
     const { defaultTemplateLoading, templateFile } = get();
@@ -130,6 +153,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       status: "extracting",
       message: "PDFを解析中",
       pdfFile: file,
+      pdfFileName: file.name,
       records: [],
       commuteEntries: [],
       generated: [],
@@ -166,6 +190,20 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
+  clearCurrentEditingData: () => {
+    clearEditingDraft();
+    set({
+      status: "idle",
+      message: "",
+      pdfFile: null,
+      pdfFileName: "",
+      reportDate: "",
+      records: [],
+      commuteEntries: [],
+      generated: [],
+    });
+  },
+
   toggleCommuteEntry: (id) =>
     set((state) => ({
       commuteEntries: state.commuteEntries.map((entry) =>
@@ -188,7 +226,12 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
 
       const commuteEntries = state.commuteEntries.map((entry) =>
-        entry.routeKey === target.routeKey ? { ...entry, [key]: value } : entry,
+        entry.routeKey === target.routeKey
+          ? {
+              ...entry,
+              [key]: value,
+            }
+          : entry,
       );
       const updated = commuteEntries.find(
         (entry) => entry.routeKey === target.routeKey,
@@ -199,6 +242,9 @@ export const useAppStore = create<AppState>((set, get) => ({
             target.routeKey,
             updated.companyName,
             updated.workLocation,
+            updated.startTime,
+            updated.endTime,
+            updated.companyDataId,
           )
         : state.routeProfiles;
       saveRouteProfiles(routeProfiles);
@@ -209,7 +255,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   setCommuteRouteField: (routeKey, key, value) =>
     set((state) => {
       const commuteEntries = state.commuteEntries.map((entry) =>
-        entry.routeKey === routeKey ? { ...entry, [key]: value } : entry,
+        entry.routeKey === routeKey
+          ? {
+              ...entry,
+              [key]: value,
+            }
+          : entry,
       );
       const updated = commuteEntries.find((entry) => entry.routeKey === routeKey);
       if (!updated) {
@@ -221,6 +272,139 @@ export const useAppStore = create<AppState>((set, get) => ({
         routeKey,
         updated.companyName,
         updated.workLocation,
+        updated.startTime,
+        updated.endTime,
+        updated.companyDataId,
+      );
+      saveRouteProfiles(routeProfiles);
+
+      return { commuteEntries, routeProfiles, generated: [] };
+    }),
+
+  saveCompanyDataEntry: (input, id) => {
+    let savedId = id ?? "";
+    set((state) => {
+      const result = upsertCompanyData(state.companyData, input, id);
+      savedId = result.saved.id;
+      saveCompanyData(result.records);
+
+      let routeProfiles = state.routeProfiles;
+      const affectedRouteKeys = new Set<string>();
+      const commuteEntries = state.commuteEntries.map((entry) => {
+        if (entry.companyDataId !== result.saved.id) {
+          return entry;
+        }
+
+        affectedRouteKeys.add(entry.routeKey);
+        return {
+          ...entry,
+          companyName: result.saved.companyName,
+          workLocation: result.saved.workLocation,
+          startTime: result.saved.startTime,
+          endTime: result.saved.endTime,
+        };
+      });
+
+      for (const routeKey of affectedRouteKeys) {
+        routeProfiles = setRouteProfile(
+          routeProfiles,
+          routeKey,
+          result.saved.companyName,
+          result.saved.workLocation,
+          result.saved.startTime,
+          result.saved.endTime,
+          result.saved.id,
+        );
+      }
+      saveRouteProfiles(routeProfiles);
+
+      return {
+        companyData: result.records,
+        commuteEntries,
+        routeProfiles,
+        generated: [],
+      };
+    });
+    return savedId;
+  },
+
+  deleteCompanyDataEntry: (id) =>
+    set((state) => {
+      const companyData = removeCompanyData(state.companyData, id);
+      saveCompanyData(companyData);
+      const routeProfiles = Object.fromEntries(
+        Object.entries(state.routeProfiles).map(([routeKey, profile]) => [
+          routeKey,
+          profile.companyDataId === id
+            ? { ...profile, companyDataId: undefined }
+            : profile,
+        ]),
+      );
+      saveRouteProfiles(routeProfiles);
+
+      return {
+        companyData,
+        routeProfiles,
+        commuteEntries: state.commuteEntries.map((entry) =>
+          entry.companyDataId === id
+            ? { ...entry, companyDataId: undefined }
+            : entry,
+        ),
+        generated: [],
+      };
+    }),
+
+  applyCompanyDataToRoute: (routeKey, companyDataId) =>
+    set((state) => {
+      const selected = state.companyData.find((record) => record.id === companyDataId);
+      if (!selected) {
+        return {};
+      }
+
+      const commuteEntries = state.commuteEntries.map((entry) =>
+        entry.routeKey === routeKey
+          ? {
+              ...entry,
+              companyName: selected.companyName,
+              workLocation: selected.workLocation,
+              startTime: selected.startTime,
+              endTime: selected.endTime,
+              companyDataId: selected.id,
+            }
+          : entry,
+      );
+      const routeProfiles = setRouteProfile(
+        state.routeProfiles,
+        routeKey,
+        selected.companyName,
+        selected.workLocation,
+        selected.startTime,
+        selected.endTime,
+        selected.id,
+      );
+      saveRouteProfiles(routeProfiles);
+
+      return { commuteEntries, routeProfiles, generated: [] };
+    }),
+
+  clearCompanyDataSelection: (routeKey) =>
+    set((state) => {
+      const commuteEntries = state.commuteEntries.map((entry) =>
+        entry.routeKey === routeKey
+          ? { ...entry, companyDataId: undefined }
+          : entry,
+      );
+      const updated = commuteEntries.find((entry) => entry.routeKey === routeKey);
+      if (!updated) {
+        return {};
+      }
+      const routeProfiles = setRouteProfile(
+        state.routeProfiles,
+        routeKey,
+        updated.companyName,
+        updated.workLocation,
+        updated.startTime,
+        updated.endTime,
       );
       saveRouteProfiles(routeProfiles);
 
@@ -237,7 +421,14 @@ export const useAppStore = create<AppState>((set, get) => ({
         routeProfiles,
         commuteEntries: state.commuteEntries.map((entry) =>
           entry.routeKey === routeKey
-            ? { ...entry, companyName: "", workLocation: "" }
+            ? {
+                ...entry,
+                companyName: "",
+                workLocation: "",
+                startTime: "",
+                endTime: "",
+                companyDataId: undefined,
+              }
             : entry,
         ),
         generated: [],
@@ -253,6 +444,9 @@ export const useAppStore = create<AppState>((set, get) => ({
           ...entry,
           companyName: "",
           workLocation: "",
+          startTime: "",
+          endTime: "",
+          companyDataId: undefined,
         })),
         generated: [],
       };
@@ -272,13 +466,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
 
     const missingInputCount = selectedEntries.filter(
-      (entry) => !entry.companyName.trim() || !entry.workLocation.trim(),
+      (entry) => !entry.companyDataId,
     ).length;
     set({
       status: "generating",
       message:
         missingInputCount > 0
-          ? `会社名または勤務場所が未入力の日が${missingInputCount}件あります。空欄のままExcelを生成中です。`
+          ? `勤務先テンプレート未選択または入力不足の日が${missingInputCount}件あります。空欄のままExcelを生成中です。`
           : "Excelを生成中",
       generated: [],
     });
@@ -294,7 +488,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         status: "ready",
         message:
           missingInputCount > 0
-            ? `${generated.length}件のExcelを生成しました。未入力${missingInputCount}件は空欄で出力しました。`
+            ? `${generated.length}件のExcelを生成しました。勤務先情報が不足する${missingInputCount}件は空欄で出力しました。`
             : `${generated.length}件のExcelを生成しました。`,
         generated,
       });
@@ -307,6 +501,26 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 }));
+
+useAppStore.subscribe((state, previousState) => {
+  if (
+    state.pdfFileName === previousState.pdfFileName &&
+    state.reportDate === previousState.reportDate &&
+    state.records === previousState.records &&
+    state.commuteEntries === previousState.commuteEntries
+  ) {
+    return;
+  }
+
+  if (state.commuteEntries.length > 0) {
+    saveEditingDraft({
+      pdfFileName: state.pdfFileName,
+      reportDate: state.reportDate,
+      records: state.records,
+      commuteEntries: state.commuteEntries,
+    });
+  }
+});
 
 function hydrateCommuteEntries(
   records: SuicaRecord[],

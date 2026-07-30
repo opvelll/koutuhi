@@ -58,6 +58,8 @@ describe("Suica history parser", () => {
         selected: true,
         companyName: "",
         workLocation: "",
+        startTime: "",
+        endTime: "",
       },
     ]);
   });

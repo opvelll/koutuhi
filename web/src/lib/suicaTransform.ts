@@ -28,6 +28,8 @@ export function transformCommute(records: SuicaRecord[]): CommuteEntry[] {
       selected: true,
       companyName: "",
       workLocation: "",
+      startTime: "",
+      endTime: "",
     };
   });
 }

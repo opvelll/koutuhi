@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { applyRouteProfiles, setRouteProfile } from "../lib/savedInputs";
+import { applyRouteProfiles, loadRouteProfiles, setRouteProfile } from "../lib/savedInputs";
 import { normalizeRouteKey } from "../lib/suicaTransform";
 import type { CommuteEntry } from "../types";
 
@@ -18,6 +18,29 @@ describe("saved commute inputs", () => {
       },
     ]);
   });
+
+  it("loads route profiles saved before workplace times were added", () => {
+    const storage = {
+      getItem: () => JSON.stringify({
+        "東京→新宿": {
+          companyName: "山田工業㈱",
+          workLocation: "新宿",
+          updatedAt: "2026-07-01T00:00:00.000Z",
+        },
+      }),
+      removeItem: () => undefined,
+      setItem: () => undefined,
+    };
+
+    expect(loadRouteProfiles(storage)["東京→新宿"]).toEqual({
+      companyName: "山田工業㈱",
+      workLocation: "新宿",
+      startTime: "",
+      endTime: "",
+      companyDataId: undefined,
+      updatedAt: "2026-07-01T00:00:00.000Z",
+    });
+  });
 });
 
 function entryFor(route: string, routeKey: string): CommuteEntry {
@@ -30,5 +53,8 @@ function entryFor(route: string, routeKey: string): CommuteEntry {
     selected: true,
     companyName: "",
     workLocation: "",
+    startTime: "",
+    endTime: "",
+    companyDataId: undefined,
   };
 }

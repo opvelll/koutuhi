@@ -49,6 +49,9 @@ export function loadRouteProfiles(
     profiles[routeKey] = {
       companyName: readString(value.companyName, ""),
       workLocation: readString(value.workLocation, ""),
+      startTime: readString(value.startTime, ""),
+      endTime: readString(value.endTime, ""),
+      companyDataId: readOptionalString(value.companyDataId),
       updatedAt: readString(value.updatedAt, ""),
     };
   }
@@ -74,6 +77,9 @@ export function applyRouteProfiles(
       ...entry,
       companyName: profile?.companyName ?? entry.companyName,
       workLocation: profile?.workLocation ?? entry.workLocation,
+      startTime: profile?.startTime ?? entry.startTime,
+      endTime: profile?.endTime ?? entry.endTime,
+      companyDataId: profile?.companyDataId ?? entry.companyDataId,
     };
   });
 }
@@ -83,9 +89,12 @@ export function setRouteProfile(
   routeKey: string,
   companyName: string,
   workLocation: string,
+  startTime = "",
+  endTime = "",
+  companyDataId?: string,
 ): RouteProfileMap {
   const next = { ...profiles };
-  if (!companyName.trim() && !workLocation.trim()) {
+  if (!companyName.trim() && !workLocation.trim() && !startTime && !endTime) {
     delete next[routeKey];
     return next;
   }
@@ -93,6 +102,9 @@ export function setRouteProfile(
   next[routeKey] = {
     companyName,
     workLocation,
+    startTime,
+    endTime,
+    companyDataId,
     updatedAt: new Date().toISOString(),
   };
   return next;
@@ -145,4 +157,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function readString(value: unknown, fallback: string): string {
   return typeof value === "string" ? value : fallback;
+}
+
+function readOptionalString(value: unknown): string | undefined {
+  return typeof value === "string" && value ? value : undefined;
 }

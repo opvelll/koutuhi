@@ -1,17 +1,25 @@
-import { BookOpen, FileSpreadsheet } from "lucide-react";
+import { BookOpen, Building2, FileSpreadsheet } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { CompanyDataPage } from "./pages/CompanyDataPage";
 import { GuidePage } from "./pages/GuidePage";
 import { MainToolPage } from "./pages/MainToolPage";
+import type { CompanyDataInput } from "./types";
 
-type Page = "main" | "guide";
+type Page = "main" | "company" | "guide";
 
 export default function App() {
   const [page, setPage] = useState<Page>("main");
+  const [companyDataInitialInput, setCompanyDataInitialInput] = useState<CompanyDataInput>();
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [page]);
+
+  function openCompanyData(initialInput?: CompanyDataInput) {
+    setCompanyDataInitialInput(initialInput);
+    setPage("company");
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950">
@@ -22,12 +30,18 @@ export default function App() {
             <h1 className="text-xl font-semibold tracking-tight">交通費請求書作成ツール</h1>
           </div>
 
-          <nav aria-label="ページ切り替え" className="flex gap-6">
+          <nav aria-label="ページ切り替え" className="flex gap-2 sm:gap-6">
             <PageButton
               active={page === "main"}
               icon={<FileSpreadsheet className="h-4 w-4" />}
               label="作成"
               onClick={() => setPage("main")}
+            />
+            <PageButton
+              active={page === "company"}
+              icon={<Building2 className="h-4 w-4" />}
+              label="勤務先テンプレート"
+              onClick={() => openCompanyData()}
             />
             <PageButton
               active={page === "guide"}
@@ -39,11 +53,17 @@ export default function App() {
         </div>
       </header>
 
-      {page === "main" ? (
-        <MainToolPage />
-      ) : (
+      <div hidden={page !== "main"}>
+        <MainToolPage onOpenCompanyData={openCompanyData} />
+      </div>
+      {page === "company" ? (
+        <CompanyDataPage
+          initialInput={companyDataInitialInput}
+          onBackToMain={() => setPage("main")}
+        />
+      ) : page === "guide" ? (
         <GuidePage onOpenMain={() => setPage("main")} />
-      )}
+      ) : null}
     </div>
   );
 }

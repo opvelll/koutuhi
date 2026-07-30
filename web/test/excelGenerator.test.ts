@@ -30,6 +30,9 @@ describe("Excel generator", () => {
           selected: true,
           companyName: "山田工業㈱",
           workLocation: "袖ヶ浦1-5-6",
+          startTime: "08:30",
+          endTime: "17:45",
+          companyDataId: "company-1",
         },
       ],
       defaultSettings(),
@@ -59,6 +62,10 @@ describe("Excel generator", () => {
     expect(cellXmlValue(sheetXml, "B30")).toBe("火");
     expect(worksheet.getCell("C30").value).toBe("山田工業㈱");
     expect(worksheet.getCell("G30").value).toBe("袖ヶ浦1-5-6");
+    expect(worksheet.getCell("M30").value).toBe(8);
+    expect(worksheet.getCell("O30").value).toBe(30);
+    expect(worksheet.getCell("Q30").value).toBe(17);
+    expect(worksheet.getCell("S30").value).toBe(45);
     expect(worksheet.getCell("V30").value).toBe("竹ノ塚～地　入谷");
     expect(worksheet.getCell("AG30").value).toBe(712);
     expect(formulaOf(worksheet.getCell("AA40"))).toBe("SUM($AG$7:$AG$37)");
@@ -72,11 +79,62 @@ describe("Excel generator", () => {
       expect(cellXmlValue(sheetXml, `B${row}`)).not.toBe("NaN");
     }
   });
+
+  it("clears workplace fields when no workplace template is selected", async () => {
+    const generated = await generateTimesheets(
+      await loadTemplateWithPresetDetails(),
+      [{
+        id: "2023/10/24:竹ノ塚~地入谷",
+        date: "2023/10/24",
+        route: "竹ノ塚～地　入谷",
+        routeKey: "竹ノ塚~地入谷",
+        roundTripFare: 712,
+        selected: true,
+        companyName: "以前の会社名",
+        workLocation: "以前の勤務場所",
+        startTime: "08:30",
+        endTime: "17:45",
+      }],
+      defaultSettings(),
+    );
+
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(await generated[0]!.blob.arrayBuffer());
+    const worksheet = workbook.getWorksheet("勤務表");
+    if (!worksheet) {
+      throw new Error("勤務表シートが見つかりません。");
+    }
+
+    for (const address of ["C30", "G30", "M30", "O30", "Q30", "S30"]) {
+      expect(worksheet.getCell(address).value).toBeNull();
+    }
+    expect(worksheet.getCell("V30").value).toBe("竹ノ塚～地　入谷");
+    expect(worksheet.getCell("AG30").value).toBe(712);
+  });
 });
 
 async function loadDefaultTemplate(): Promise<File> {
   const bytes = new Uint8Array(await fs.readFile(defaultTemplateUrl));
   return new File([bytes], "default-timesheet.xlsx", {
+    type: templateMimeType,
+  });
+}
+
+async function loadTemplateWithPresetDetails(): Promise<File> {
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(await fs.readFile(defaultTemplateUrl));
+  const worksheet = workbook.getWorksheet("勤務表");
+  if (!worksheet) {
+    throw new Error("勤務表シートが見つかりません。");
+  }
+
+  worksheet.getCell("C30").value = "テンプレート会社";
+  worksheet.getCell("G30").value = "テンプレート勤務場所";
+  worksheet.getCell("M30").value = 8;
+  worksheet.getCell("O30").value = 30;
+  worksheet.getCell("Q30").value = 17;
+  worksheet.getCell("S30").value = 45;
+  return new File([await workbook.xlsx.writeBuffer()], "preset-timesheet.xlsx", {
     type: templateMimeType,
   });
 }
