@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  applyFirstMatchingCompanyData,
   groupCommuteEntriesByRoute,
   groupSelectedCommuteEntriesByRoute,
 } from "../lib/commuteRoutes";
@@ -57,5 +58,41 @@ describe("groupCommuteEntriesByRoute", () => {
       unselectedTokyo,
       unselectedShinagawa,
     ])).toEqual([]);
+  });
+
+  it("automatically applies the first workplace template matching the route", () => {
+    const entries = [
+      entry("1", "東京→新宿", "東京 → 新宿"),
+      entry("2", "東京→品川", "東京 → 品川"),
+    ];
+    const companyData = [
+      {
+        id: "company-first",
+        companyName: "最初の会社",
+        workLocation: "新宿本社",
+        commuteRoute: "東京  →  新宿",
+        startTime: "08:30",
+        endTime: "17:30",
+      },
+      {
+        id: "company-second",
+        companyName: "2番目の会社",
+        workLocation: "新宿支社",
+        commuteRoute: "東京→新宿",
+        startTime: "09:00",
+        endTime: "18:00",
+      },
+    ];
+
+    expect(applyFirstMatchingCompanyData(entries, companyData)).toEqual([
+      expect.objectContaining({
+        companyDataId: "company-first",
+        companyName: "最初の会社",
+        workLocation: "新宿本社",
+        startTime: "08:30",
+        endTime: "17:30",
+      }),
+      entries[1],
+    ]);
   });
 });

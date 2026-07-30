@@ -40,6 +40,60 @@ describe("PDF loading state", () => {
     });
   });
 
+  it("automatically selects the first workplace template matching the PDF route", async () => {
+    useAppStore.setState({
+      companyData: [
+        {
+          id: "company-first",
+          companyName: "最初の会社",
+          workLocation: "新宿本社",
+          commuteRoute: "東京 ～ 新宿",
+          startTime: "08:30",
+          endTime: "17:30",
+        },
+        {
+          id: "company-second",
+          companyName: "2番目の会社",
+          workLocation: "新宿支社",
+          commuteRoute: "東京～新宿",
+          startTime: "09:00",
+          endTime: "18:00",
+        },
+      ],
+    });
+    vi.mocked(extractSuicaFromPdfFile).mockResolvedValue({
+      reportDate: "2026/7/14",
+      lines: [],
+      rawText: "",
+      records: [{
+        id: "record-1",
+        date: "2026/07/01",
+        month: "07",
+        day: "01",
+        type1: "入",
+        station1: "東京",
+        type2: "出",
+        station2: "新宿",
+        amount: -210,
+        balance: 1000,
+        selected: true,
+        selectable: true,
+      }],
+    });
+
+    await useAppStore.getState().loadPdf({ name: "history.pdf" } as File);
+
+    expect(useAppStore.getState().commuteEntries).toEqual([
+      expect.objectContaining({
+        companyDataId: "company-first",
+        companyName: "最初の会社",
+        workLocation: "新宿本社",
+        startTime: "08:30",
+        endTime: "17:30",
+      }),
+    ]);
+  });
+
   it("updates company information once per route", () => {
     useAppStore.setState({
       commuteEntries: [

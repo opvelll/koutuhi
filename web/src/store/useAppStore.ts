@@ -24,6 +24,10 @@ import {
   loadEmployeeSettings,
   saveEmployeeSettings,
 } from "../lib/employeeSettings";
+import {
+  applyCompanyData,
+  applyFirstMatchingCompanyData,
+} from "../lib/commuteRoutes";
 import { extractSuicaFromPdfFile } from "../lib/pdfTextExtractor";
 import { transformCommute } from "../lib/suicaTransform";
 
@@ -151,7 +155,10 @@ export const useAppStore = create<AppState>((set, get) => ({
         return;
       }
 
-      const commuteEntries = transformCommute(result.records);
+      const commuteEntries = applyFirstMatchingCompanyData(
+        transformCommute(result.records),
+        get().companyData,
+      );
       set({
         status: "ready",
         message: `${result.records.length}件の履歴から${commuteEntries.length}日分の通勤を作成しました。`,
@@ -257,14 +264,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
       const commuteEntries = state.commuteEntries.map((entry) =>
         entry.routeKey === routeKey
-          ? {
-              ...entry,
-              companyName: selected.companyName,
-              workLocation: selected.workLocation,
-              startTime: selected.startTime,
-              endTime: selected.endTime,
-              companyDataId: selected.id,
-            }
+          ? applyCompanyData(entry, selected)
           : entry,
       );
 
