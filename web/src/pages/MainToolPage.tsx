@@ -39,7 +39,6 @@ export function MainToolPage({
     commuteEntries,
     generated,
     settings,
-    routeProfiles,
     companyData,
     initializeDefaultTemplate,
     loadPdf,
@@ -51,8 +50,6 @@ export function MainToolPage({
     setCommuteRouteField,
     applyCompanyDataToRoute,
     clearCompanyDataSelection,
-    clearRouteProfile,
-    resetRouteProfiles,
     generate,
   } = useAppStore();
 
@@ -379,36 +376,6 @@ export function MainToolPage({
                 </p>
               ) : null}
 
-              <details className="mt-4 text-sm text-slate-600">
-                <summary className="w-fit cursor-pointer font-medium text-slate-700 hover:text-blue-700">
-                  保存した入力情報を管理
-                </summary>
-                <div className="mt-4 max-w-3xl space-y-2 border-l-2 border-slate-200 pl-4">
-                  {routeRows.map((entry) => (
-                    <div className="flex items-center justify-between gap-4 py-1" key={entry.routeKey}>
-                      <span className="truncate">{entry.route}</span>
-                      <button
-                        className="inline-flex flex-none items-center gap-2 px-2 py-1 font-medium text-slate-600 hover:text-red-700 disabled:text-slate-300"
-                        disabled={!routeProfiles[entry.routeKey]}
-                        type="button"
-                        onClick={() => clearRouteProfile(entry.routeKey)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        削除
-                      </button>
-                    </div>
-                  ))}
-                  <button
-                    className="mt-3 inline-flex items-center gap-2 font-medium text-red-700 hover:text-red-800 disabled:text-slate-300"
-                    disabled={Object.keys(routeProfiles).length === 0}
-                    type="button"
-                    onClick={resetRouteProfiles}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    すべての保存情報を削除
-                  </button>
-                </div>
-              </details>
             </section>
 
             <div className="flex flex-col gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:items-center sm:justify-between">

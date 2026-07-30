@@ -1,96 +1,54 @@
-import type { CommuteEntry, SuicaRecord } from "../types";
+import type { CommuteEntry } from "../types";
+import {
+  isRecord,
+  readOptionalString,
+  readStoredJson,
+  readString,
+  removeStoredValue,
+  writeStoredJson,
+  type StorageLike,
+} from "./browserStorage";
 
 const editingDraftStorageKey = "koutuhi.editingDraft.v1";
-
-type StorageLike = Pick<Storage, "getItem" | "removeItem" | "setItem">;
 
 export type EditingDraft = {
   pdfFileName: string;
   reportDate: string;
-  records: SuicaRecord[];
   commuteEntries: CommuteEntry[];
 };
 
 export function loadEditingDraft(
-  storage = getBrowserStorage(),
+  storage?: StorageLike | null,
 ): EditingDraft | null {
-  const raw = storage?.getItem(editingDraftStorageKey);
-  if (!raw) {
+  const parsed = readStoredJson(editingDraftStorageKey, storage);
+  if (!isRecord(parsed)) {
     return null;
   }
 
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    if (!isRecord(parsed)) {
-      return null;
-    }
+  const commuteEntries = Array.isArray(parsed.commuteEntries)
+    ? parsed.commuteEntries.flatMap(readCommuteEntry)
+    : [];
 
-    const records = Array.isArray(parsed.records)
-      ? parsed.records.flatMap(readSuicaRecord)
-      : [];
-    const commuteEntries = Array.isArray(parsed.commuteEntries)
-      ? parsed.commuteEntries.flatMap(readCommuteEntry)
-      : [];
-
-    if (commuteEntries.length === 0) {
-      return null;
-    }
-
-    return {
-      pdfFileName: readString(parsed.pdfFileName),
-      reportDate: readString(parsed.reportDate),
-      records,
-      commuteEntries,
-    };
-  } catch {
+  if (commuteEntries.length === 0) {
     return null;
   }
+
+  return {
+    pdfFileName: readString(parsed.pdfFileName),
+    reportDate: readString(parsed.reportDate),
+    commuteEntries,
+  };
 }
 
 export function saveEditingDraft(
   draft: EditingDraft,
-  storage = getBrowserStorage(),
+  storage?: StorageLike | null,
 ): void {
-  try {
-    storage?.setItem(editingDraftStorageKey, JSON.stringify(draft));
-  } catch {
-    // Draft persistence must not prevent in-browser editing.
-  }
+  writeStoredJson(editingDraftStorageKey, draft, storage);
 }
 
-export function clearEditingDraft(storage = getBrowserStorage()): void {
-  try {
-    storage?.removeItem(editingDraftStorageKey);
-  } catch {
-    // Clearing the visible state should still work if storage is unavailable.
-  }
-}
-
-function readSuicaRecord(value: unknown): SuicaRecord[] {
-  if (!isRecord(value)) {
-    return [];
-  }
-
-  const id = readString(value.id);
-  const date = readString(value.date);
-  if (!id || !date) {
-    return [];
-  }
-
-  return [{
-    id,
-    date,
-    month: readString(value.month),
-    day: readString(value.day),
-    type1: readString(value.type1),
-    station1: readString(value.station1),
-    type2: readString(value.type2),
-    station2: readString(value.station2),
-    amount: readNumber(value.amount),
-    balance: readNumber(value.balance),
-    selected: readBoolean(value.selected),
-    selectable: readBoolean(value.selectable),
-  }];
+export function clearEditingDraft(storage?: StorageLike | null): void {
+  removeStoredValue(editingDraftStorageKey, storage);
 }
 
 function readCommuteEntry(value: unknown): CommuteEntry[] {
@@ -119,30 +77,6 @@ function readCommuteEntry(value: unknown): CommuteEntry[] {
     endTime: readString(value.endTime),
     companyDataId: readOptionalString(value.companyDataId),
   }];
-}
-
-function getBrowserStorage(): StorageLike | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  try {
-    return window.localStorage;
-  } catch {
-    return null;
-  }
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function readString(value: unknown): string {
-  return typeof value === "string" ? value : "";
-}
-
-function readOptionalString(value: unknown): string | undefined {
-  return typeof value === "string" && value ? value : undefined;
 }
 
 function readNumber(value: unknown): number {

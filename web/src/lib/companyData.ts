@@ -1,12 +1,16 @@
 import type { CompanyData, CompanyDataInput } from "../types";
-import { normalizeRouteKey } from "./suicaTransform";
+import {
+  isRecord,
+  readStoredJson,
+  readString,
+  writeStoredJson,
+  type StorageLike,
+} from "./browserStorage";
 
 const companyDataStorageKey = "koutuhi.companyData.v1";
 
-type StorageLike = Pick<Storage, "getItem" | "removeItem" | "setItem">;
-
-export function loadCompanyData(storage = getBrowserStorage()): CompanyData[] {
-  const parsed = readJson(companyDataStorageKey, storage);
+export function loadCompanyData(storage?: StorageLike | null): CompanyData[] {
+  const parsed = readStoredJson(companyDataStorageKey, storage);
   if (!Array.isArray(parsed)) {
     return [];
   }
@@ -29,19 +33,17 @@ export function loadCompanyData(storage = getBrowserStorage()): CompanyData[] {
       companyName,
       workLocation,
       commuteRoute,
-      routeKey: normalizeRouteKey(commuteRoute),
       startTime: readString(value.startTime),
       endTime: readString(value.endTime),
-      updatedAt: readString(value.updatedAt),
     }];
   });
 }
 
 export function saveCompanyData(
   records: CompanyData[],
-  storage = getBrowserStorage(),
+  storage?: StorageLike | null,
 ): void {
-  writeJson(companyDataStorageKey, records, storage);
+  writeStoredJson(companyDataStorageKey, records, storage);
 }
 
 export function upsertCompanyData(
@@ -54,10 +56,8 @@ export function upsertCompanyData(
     companyName: input.companyName.trim(),
     workLocation: input.workLocation.trim(),
     commuteRoute: input.commuteRoute.trim(),
-    routeKey: normalizeRouteKey(input.commuteRoute),
     startTime: input.startTime,
     endTime: input.endTime,
-    updatedAt: new Date().toISOString(),
   };
   const existingIndex = records.findIndex((record) => record.id === saved.id);
   const next = [...records];
@@ -80,45 +80,4 @@ export function removeCompanyData(records: CompanyData[], id: string): CompanyDa
 
 function createId(): string {
   return globalThis.crypto?.randomUUID?.() ?? `company-${Date.now()}`;
-}
-
-function getBrowserStorage(): StorageLike | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  try {
-    return window.localStorage;
-  } catch {
-    return null;
-  }
-}
-
-function readJson(key: string, storage: StorageLike | null): unknown {
-  const raw = storage?.getItem(key);
-  if (!raw) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-}
-
-function writeJson(key: string, value: unknown, storage: StorageLike | null): void {
-  try {
-    storage?.setItem(key, JSON.stringify(value));
-  } catch {
-    // Persistence is optional. Editing remains available without localStorage.
-  }
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function readString(value: unknown): string {
-  return typeof value === "string" ? value : "";
 }

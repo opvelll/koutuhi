@@ -30,7 +30,6 @@ describe("workplace template storage", () => {
         companyName: "山田工業㈱",
         workLocation: "袖ヶ浦1-5-6",
         commuteRoute: "東京  →  新宿",
-        routeKey: "東京→新宿",
         startTime: "08:30",
         endTime: "17:45",
       }),

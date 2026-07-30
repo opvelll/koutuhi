@@ -12,13 +12,10 @@ describe("PDF loading state", () => {
     useAppStore.setState({
       status: "idle",
       message: "",
-      pdfFile: null,
       pdfFileName: "",
       reportDate: "",
-      records: [],
       commuteEntries: [],
       generated: [],
-      routeProfiles: {},
       companyData: [],
     });
     vi.mocked(extractSuicaFromPdfFile).mockReset();
@@ -37,14 +34,13 @@ describe("PDF loading state", () => {
     expect(useAppStore.getState()).toMatchObject({
       status: "error",
       reportDate: "2026/7/14",
-      records: [],
       commuteEntries: [],
       message:
         "履歴を読み取れませんでした。モバイルSuicaのSF（電子マネー）利用履歴から保存した、文字を選択できるPDFか確認してください。",
     });
   });
 
-  it("updates and saves company information once per route", () => {
+  it("updates company information once per route", () => {
     useAppStore.setState({
       commuteEntries: [
         {
@@ -95,10 +91,6 @@ describe("PDF loading state", () => {
       { companyName: "サンエス", workLocation: "新宿支社" },
       { companyName: "別会社", workLocation: "品川" },
     ]);
-    expect(state.routeProfiles["東京→新宿"]).toMatchObject({
-      companyName: "サンエス",
-      workLocation: "新宿支社",
-    });
   });
 
   it("selects and clears all commute days", () => {
@@ -142,23 +134,8 @@ describe("PDF loading state", () => {
     useAppStore.setState({
       status: "ready",
       message: "編集中",
-      pdfFile: { name: "history.pdf" } as File,
       pdfFileName: "history.pdf",
       reportDate: "2026/07/31",
-      records: [{
-        id: "record-1",
-        date: "2026/07/01",
-        month: "07",
-        day: "01",
-        type1: "入",
-        station1: "東京",
-        type2: "出",
-        station2: "新宿",
-        amount: 210,
-        balance: 1000,
-        selected: true,
-        selectable: true,
-      }],
       commuteEntries: [{
         id: "day-1",
         date: "2026/07/01",
@@ -179,10 +156,8 @@ describe("PDF loading state", () => {
     expect(useAppStore.getState()).toMatchObject({
       status: "idle",
       message: "",
-      pdfFile: null,
       pdfFileName: "",
       reportDate: "",
-      records: [],
       commuteEntries: [],
       generated: [],
     });
@@ -195,10 +170,8 @@ describe("PDF loading state", () => {
         companyName: "山田工業㈱",
         workLocation: "袖ヶ浦1-5-6",
         commuteRoute: "東京 → 新宿",
-        routeKey: "東京→新宿",
         startTime: "08:30",
         endTime: "17:45",
-        updatedAt: "2026-07-30T00:00:00.000Z",
       }],
       commuteEntries: [
         {
@@ -274,5 +247,23 @@ describe("PDF loading state", () => {
       startTime: "08:30",
       endTime: "17:45",
     });
+
+    useAppStore.getState().clearCompanyDataSelection("東京→新宿");
+    expect(useAppStore.getState().commuteEntries).toEqual([
+      expect.objectContaining({
+        companyDataId: undefined,
+        companyName: "",
+        workLocation: "",
+        startTime: "",
+        endTime: "",
+      }),
+      expect.objectContaining({
+        companyDataId: undefined,
+        companyName: "",
+        workLocation: "",
+        startTime: "",
+        endTime: "",
+      }),
+    ]);
   });
 });

@@ -40,17 +40,6 @@ export type EmployeeSettings = {
   name: string;
 };
 
-export type RouteProfile = {
-  companyName: string;
-  workLocation: string;
-  startTime: string;
-  endTime: string;
-  companyDataId?: string;
-  updatedAt: string;
-};
-
-export type RouteProfileMap = Record<string, RouteProfile>;
-
 export type CompanyDataInput = {
   companyName: string;
   workLocation: string;
@@ -61,8 +50,6 @@ export type CompanyDataInput = {
 
 export type CompanyData = CompanyDataInput & {
   id: string;
-  routeKey: string;
-  updatedAt: string;
 };
 
 export type GeneratedWorkbook = {

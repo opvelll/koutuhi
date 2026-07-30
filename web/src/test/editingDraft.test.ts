@@ -36,14 +36,12 @@ describe("editing draft storage", () => {
     saveEditingDraft({
       pdfFileName: "history.pdf",
       reportDate: "2026/07/31",
-      records: [],
       commuteEntries: [commuteEntry],
     }, storage);
 
     expect(loadEditingDraft(storage)).toEqual({
       pdfFileName: "history.pdf",
       reportDate: "2026/07/31",
-      records: [],
       commuteEntries: [commuteEntry],
     });
   });
@@ -53,7 +51,6 @@ describe("editing draft storage", () => {
     saveEditingDraft({
       pdfFileName: "history.pdf",
       reportDate: "2026/07/31",
-      records: [],
       commuteEntries: [commuteEntry],
     }, storage);
 
