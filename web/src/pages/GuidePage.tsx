@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   ArrowRight,
+  Building2,
   CheckCircle2,
   ExternalLink,
   FileSpreadsheet,
@@ -26,10 +27,46 @@ const suicaGuideScreenshots = [
   },
   {
     alt: "モバイルSuicaのSF電子マネー利用履歴ページと選択した履歴を印刷ボタン",
-    caption: "期間と履歴を選択し、右側の「選択した履歴を印刷」からPDFとして保存します。",
+    caption: "期間と履歴を選び、右側の「選択した履歴を印刷」からPDFとして保存します。",
     fileName: "スクリーンショット 2026-07-14 222746.png",
     title: "選択した履歴をPDFとして保存",
   },
+] as const;
+
+const workflowSteps = [
+  {
+    description: "モバイルSuicaから保存した利用履歴PDFを選びます。",
+    icon: <FileText className="h-5 w-5" />,
+    number: 1,
+    title: "Suica利用履歴PDFを選ぶ",
+  },
+  {
+    description: "出力する日と、日付・経路・往復交通費を確認します。",
+    icon: <CheckCircle2 className="h-5 w-5" />,
+    number: 2,
+    title: "通勤履歴を確認する",
+  },
+  {
+    description: "勤務先テンプレートと、支社・社員ID・氏名を入力します。",
+    icon: <Building2 className="h-5 w-5" />,
+    number: 3,
+    title: "勤務先・社員情報を入力する",
+  },
+  {
+    description: "交通費請求書Excelを作成し、端末へ保存します。",
+    icon: <FileSpreadsheet className="h-5 w-5" />,
+    number: 4,
+    title: "Excelを作成・保存する",
+  },
+] as const;
+
+const termDefinitions = [
+  ["PDF", "印刷した書類と同じ見た目で、文書を保存できるファイルです。"],
+  ["ブラウザ", "ChromeやEdgeなど、Webページを見るためのアプリです。"],
+  ["SF（電子マネー）利用履歴", "Suicaを使った日、駅名、運賃などが並んだ記録です。"],
+  ["Excelテンプレート", "交通費請求書の書式があらかじめ入った、ひな形ファイルです。"],
+  ["勤務先テンプレート", "会社名、勤務場所、勤務時間、通勤経路をまとめて再利用する設定です。"],
+  ["ダウンロード", "作成したファイルを、この端末へ保存することです。"],
 ] as const;
 
 export function GuidePage({ onOpenMain }: { onOpenMain: () => void }) {
@@ -37,12 +74,11 @@ export function GuidePage({ onOpenMain }: { onOpenMain: () => void }) {
     <main className="mx-auto max-w-[1080px] px-4 py-8 sm:px-6 sm:py-12">
       <section className="border-b border-slate-200 bg-blue-50 px-5 py-8 sm:px-8 sm:py-10">
         <p className="text-sm font-semibold text-blue-700">はじめての方へ</p>
-        <h2 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
-          交通費請求書の作り方
+        <h2 className="mt-2 max-w-3xl text-2xl font-semibold tracking-tight sm:text-3xl">
+          Suicaの利用履歴から、サンエス警備用の交通費請求書Excelを作ります
         </h2>
-        <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-600">
-          Suica利用履歴PDFの準備から、内容確認、Excelのダウンロードまでを順番に説明します。
-          PDFとExcelはブラウザ内で処理されます。
+        <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-700">
+          モバイルSuicaから利用履歴のPDFを保存し、このツールで内容を確認すると、提出用Excelを作成できます。順番どおりに進めれば完了します。
         </p>
         <button
           className="mt-6 flex h-11 items-center gap-2 rounded-lg bg-blue-700 px-5 text-sm font-semibold text-white hover:bg-blue-600"
@@ -54,21 +90,54 @@ export function GuidePage({ onOpenMain }: { onOpenMain: () => void }) {
         </button>
       </section>
 
-      <GuideSection
-        icon={<CheckCircle2 className="h-5 w-5" />}
-        title="最初に用意するもの"
-      >
+      <section className="border-b border-emerald-200 bg-emerald-50 px-5 py-7 sm:px-8">
+        <div className="flex items-start gap-4">
+          <div className="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-white text-emerald-700 shadow-sm">
+            <ShieldCheck className="h-6 w-6" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-emerald-950">選んだファイルは、どこにも送信しません</h2>
+            <p className="mt-2 text-sm leading-7 text-emerald-950">
+              SuicaのPDFも、作成に使うExcelも、この端末のブラウザ内だけで処理します。インターネット上のサーバーや外部サービスへファイルを送信することはありません。
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <GuideSection icon={<HelpCircle className="h-5 w-5" />} title="最初に知っておく言葉">
+        <p className="mb-5 text-sm leading-7 text-slate-700">
+          このページで使う言葉を、先にかんたんに説明します。
+        </p>
+        <dl className="grid gap-3 sm:grid-cols-2">
+          {termDefinitions.map(([term, definition]) => (
+            <TermDefinition definition={definition} key={term} term={term} />
+          ))}
+        </dl>
+      </GuideSection>
+
+      <GuideSection icon={<CheckCircle2 className="h-5 w-5" />} title="作成は4ステップです">
+        <div className="grid gap-4 sm:grid-cols-2">
+          {workflowSteps.map((step) => (
+            <WorkflowCard key={step.number} {...step} />
+          ))}
+        </div>
+      </GuideSection>
+
+      <GuideSection icon={<CheckCircle2 className="h-5 w-5" />} title="最初に用意するもの">
         <ul className="space-y-3 text-sm leading-7 text-slate-700">
           <li>・モバイルSuicaから保存した「SF（電子マネー）利用履歴」のPDF</li>
-          <li>・Excelへ記載する支社、社員ID、氏名</li>
-          <li>・各通勤経路に対応する勤務先テンプレート</li>
+          <li>・交通費請求書に記載する支社、社員ID、氏名</li>
+          <li>・勤務先の会社名、勤務場所、勤務時間</li>
         </ul>
         <div className="mt-5 border-l-4 border-blue-500 bg-blue-50 px-4 py-3 text-sm leading-6 text-blue-950">
-          サンエスExcelテンプレートは最初から用意されています。通常はExcelファイルを別途準備する必要はありません。
+          サンエス警備用のExcelテンプレートは最初から用意されています。通常はExcelファイルを別に準備する必要はありません。
         </div>
       </GuideSection>
 
       <GuideSection icon={<FileText className="h-5 w-5" />} title="Suica利用履歴PDFを保存する">
+        <p className="mb-6 text-sm leading-7 text-slate-700">
+          はじめに、モバイルSuicaの会員メニューから利用履歴をPDFとして保存します。
+        </p>
         <div className="space-y-6">
           {suicaGuideScreenshots.map((screenshot, index) => (
             <ScreenshotStep
@@ -95,62 +164,77 @@ export function GuidePage({ onOpenMain }: { onOpenMain: () => void }) {
         </a>
       </GuideSection>
 
-      <GuideSection icon={<FileText className="h-5 w-5" />} title="ステップ1：PDFを読み込む">
-        <p className="text-sm leading-7 text-slate-700">
-          「Suica利用履歴PDFを選択」ボタンから保存したPDFを選びます。読み込みが完了すると、対象年月と通勤日が表示され、内容確認へ進みます。
-        </p>
-        <p className="mt-3 text-sm leading-7 text-slate-700">
-          PDFに含まれる文字をブラウザ内で直接読み取ります。画像として保存されたPDFは読み込めません。
+      <GuideSection icon={<FileText className="h-5 w-5" />} title="ステップ1：Suica利用履歴PDFを選ぶ">
+        <NumberedList
+          items={[
+            "作成画面の「Suica利用履歴PDFを選択」を押します。",
+            "先ほどモバイルSuicaから保存したPDFを選びます。",
+            "読み込みが終わると、対象年月と通勤日が表示され、自動でステップ2へ進みます。",
+          ]}
+        />
+        <p className="mt-5 border-l-4 border-amber-500 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950">
+          PDFの文字をブラウザ内で読み取ります。紙を撮影したものなど、画像だけのPDFは読み込めません。
         </p>
       </GuideSection>
 
       <GuideSection icon={<CheckCircle2 className="h-5 w-5" />} title="ステップ2：通勤履歴を確認する">
         <NumberedList
           items={[
-            "交通費請求に含める日だけ、選択欄をオンにします。",
-            "日付、通勤経路、往復交通費が正しいか確認します。",
-            "経路ごとの入力情報で勤務先テンプレートを選びます。選択しない経路は勤務先情報が空欄で出力されます。",
+            "交通費請求書に含める日だけ、左側の選択欄をオンにします。",
+            "日付、通勤経路、往復交通費に間違いがないか確認します。",
+            "「勤務先・社員情報の入力へ」を押して、ステップ3へ進みます。",
           ]}
         />
         <p className="mt-5 border-l-2 border-slate-300 pl-4 text-sm leading-6 text-slate-700">
-          勤務先テンプレートは上部ナビから登録・編集・削除できます。通勤経路から新しい勤務先テンプレートを作成することもできます。
+          出力する日が1日も選ばれていない場合は、次のステップへ進めません。
         </p>
       </GuideSection>
 
-      <GuideSection icon={<FileSpreadsheet className="h-5 w-5" />} title="ステップ3：Excelを作成する">
+      <GuideSection icon={<Building2 className="h-5 w-5" />} title="ステップ3：勤務先・社員情報を入力する">
         <NumberedList
           items={[
-            "支社、社員ID、氏名を確認します。これらはブラウザに保存されます。",
-            "現在のExcelテンプレートを確認します。通常は既定のサンエステンプレートを使用します。",
-            "勤務先テンプレートの選択内容を確認し、「交通費請求書Excelを作成」を押します。",
-            "作成後に表示されるダウンロードボタンからExcelを保存します。",
+            "通勤経路ごとに勤務先テンプレートを選びます。登録がなければ、その経路から新しく作成できます。",
+            "必要に応じて、今回の会社名、勤務場所、勤務開始・終了時刻を直します。",
+            "交通費請求書へ記載する支社、社員ID、氏名を入力します。",
+            "「Excelの作成・保存へ」を押して、ステップ4へ進みます。",
           ]}
         />
         <div className="mt-5 border-l-4 border-amber-500 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950">
-          勤務先テンプレートが未選択の経路は、会社名・勤務場所・勤務時間が空欄で出力されます。
+          勤務先テンプレートを選ばなくても作成できますが、その経路の会社名・勤務場所・勤務時間は空欄になります。
         </div>
       </GuideSection>
 
-      <GuideSection icon={<Printer className="h-5 w-5" />} title="作成後：印刷・提出する">
+      <GuideSection icon={<FileSpreadsheet className="h-5 w-5" />} title="ステップ4：Excelを作成・保存する">
         <NumberedList
           items={[
-            "ダウンロードしたExcelを開き、日付、経路、金額、会社名、勤務場所に間違いがないか確認します。",
-            "作成した交通費請求書Excelと、ステップ1で使用したSuica利用履歴PDFを印刷します。",
+            "使用するExcelテンプレートを確認します。通常は、最初から用意されたサンエスExcelテンプレートを使います。",
+            "勤務先テンプレートが未選択という注意が出ていないか確認します。",
+            "「交通費請求書Excelを作成・保存」を押します。",
+            "作成されたExcelがこの端末へ保存されます。必要な場合は「もう一度保存」から再度保存できます。",
+          ]}
+        />
+      </GuideSection>
+
+      <GuideSection icon={<Printer className="h-5 w-5" />} title="作成後：確認・印刷・提出する">
+        <NumberedList
+          items={[
+            "保存したExcelを開き、日付、経路、金額、会社名、勤務場所に間違いがないか確認します。",
+            "交通費請求書Excelと、ステップ1で使ったSuica利用履歴PDFを印刷します。",
             "必要書類と提出先を所属支社に確認し、案内された方法で提出します。",
           ]}
         />
         <div className="mt-5 border-l-4 border-amber-500 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950">
-          支社によっては、印刷する書類や提出方法が異なる場合があります。この手順を標準的な流れとして参考にし、提出前に所属支社の案内を確認してください。
+          支社によって、印刷する書類や提出方法が異なる場合があります。提出前に所属支社の案内を確認してください。
         </div>
       </GuideSection>
 
-      <GuideSection icon={<ShieldCheck className="h-5 w-5" />} title="ファイルと保存データについて">
+      <GuideSection icon={<ShieldCheck className="h-5 w-5" />} title="入力した情報の保存について">
         <div className="space-y-4 text-sm leading-7 text-slate-700">
           <p>
-            選択したPDFとExcelテンプレートは、このブラウザ内だけで処理します。外部APIやCDNへファイルを送信しません。
+            支社、社員ID、氏名、勤務先情報は、この端末のブラウザに保存されます。同じ端末・同じブラウザなら、次回も入力内容を使用できます。
           </p>
           <p>
-            支社、社員ID、氏名、経路ごとの会社名と勤務場所は、このブラウザの保存領域に記録されます。別の端末や別のブラウザには引き継がれません。
+            別の端末や別のブラウザには引き継がれません。共有端末を使う場合は、作業後に「編集中データをクリア」を押してください。
           </p>
         </div>
       </GuideSection>
@@ -158,19 +242,19 @@ export function GuidePage({ onOpenMain }: { onOpenMain: () => void }) {
       <GuideSection icon={<HelpCircle className="h-5 w-5" />} title="よくある質問">
         <div className="space-y-3">
           <Faq question="PDFを読み込んでも履歴が表示されません">
-            モバイルSuicaの「SF（電子マネー）利用履歴」から直接保存した、文字を選択できるPDFか確認してください。画像として保存されたPDFは読み込めません。
+            モバイルSuicaの「SF（電子マネー）利用履歴」から直接保存した、文字を選べるPDFか確認してください。画像だけのPDFは読み込めません。
           </Faq>
           <Faq question="会社名や勤務場所が自動で入るのはなぜですか">
-            選択した勤務先テンプレートの内容を、同じ通勤経路の申請データへ反映しているためです。
+            選んだ勤務先テンプレートの内容を、同じ通勤経路の申請データへ反映しているためです。
           </Faq>
           <Faq question="別のExcelテンプレートを使えますか">
-            ステップ3の「Excelテンプレートを変更」からXLSXファイルを選択できます。テンプレートのシート構成が異なる場合は正しく出力できないことがあります。
+            ステップ4の「テンプレートを変更」からXLSXファイルを選べます。書式が異なるファイルでは、正しく出力できない場合があります。
           </Faq>
           <Faq question="勤務先テンプレートが未選択でも作成できますか">
-            作成できます。ただし、未選択の経路は会社名・勤務場所・勤務時間が空欄で出力されます。
+            作成できます。ただし、未選択の経路は会社名・勤務場所・勤務時間が空欄になります。
           </Faq>
           <Faq question="ファイルはインターネットへ送信されますか">
-            送信されません。PDFの解析とExcel作成はブラウザ内で行います。
+            送信されません。PDFの読み取りとExcelの作成は、この端末のブラウザ内で行います。
           </Faq>
         </div>
       </GuideSection>
@@ -181,12 +265,46 @@ export function GuidePage({ onOpenMain }: { onOpenMain: () => void }) {
           <div>
             <h2 className="font-semibold text-amber-950">提出前に必ず確認してください</h2>
             <p className="mt-2 text-sm leading-6 text-amber-950">
-              このツールは請求書作成を補助するものです。日付、経路、金額、会社名、勤務場所と、生成されたExcelの内容を提出前に確認してください。必要書類と提出方法は所属支社へ確認してください。
+              このツールは請求書作成を補助するものです。日付、経路、金額、会社名、勤務場所と、作成されたExcelの内容を提出前に確認してください。
             </p>
           </div>
         </div>
       </section>
     </main>
+  );
+}
+
+function WorkflowCard({
+  number,
+  title,
+  description,
+  icon,
+}: {
+  number: number;
+  title: string;
+  description: string;
+  icon: ReactNode;
+}) {
+  return (
+    <article className="rounded-xl border border-slate-200 bg-white p-5">
+      <div className="flex items-center gap-3">
+        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-800">
+          {number}
+        </span>
+        <span className="text-blue-700">{icon}</span>
+      </div>
+      <h3 className="mt-4 font-semibold text-slate-950">{title}</h3>
+      <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
+    </article>
+  );
+}
+
+function TermDefinition({ term, definition }: { term: string; definition: string }) {
+  return (
+    <div className="rounded-lg bg-slate-100/80 px-4 py-3">
+      <dt className="text-sm font-semibold text-slate-900">{term}</dt>
+      <dd className="mt-1 text-sm leading-6 text-slate-600">{definition}</dd>
+    </div>
   );
 }
 

@@ -27,7 +27,9 @@ export default function App() {
         <div className="mx-auto flex max-w-[1280px] flex-col gap-5 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <div className="flex items-center gap-3">
             <FileSpreadsheet className="h-6 w-6 text-blue-700" />
-            <h1 className="text-xl font-semibold tracking-tight">交通費請求書作成ツール</h1>
+            <h1 className="text-xl font-semibold tracking-tight">
+              サンエス警備用 交通費請求書作成ツール
+            </h1>
           </div>
 
           <nav aria-label="ページ切り替え" className="flex gap-2 sm:gap-6">

@@ -11,12 +11,12 @@ import {
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { downloadWorkbook } from "../lib/excelGenerator";
 import { groupSelectedCommuteEntriesByRoute } from "../lib/commuteRoutes";
+import { downloadWorkbook } from "../lib/excelGenerator";
 import { useAppStore } from "../store/useAppStore";
 import type { CompanyDataInput } from "../types";
 
-type WorkflowStep = 1 | 2 | 3;
+type WorkflowStep = 1 | 2 | 3 | 4;
 
 export function MainToolPage({
   onOpenCompanyData,
@@ -28,6 +28,7 @@ export function MainToolPage({
   const [activeStep, setActiveStep] = useState<WorkflowStep>(() =>
     useAppStore.getState().commuteEntries.length > 0 ? 2 : 1,
   );
+  const [furthestStep, setFurthestStep] = useState<WorkflowStep>(() => activeStep);
   const {
     status,
     message,
@@ -70,11 +71,9 @@ export function MainToolPage({
   const missingInputCount = selectedEntries.filter(
     (entry) => !entry.companyDataId,
   ).length;
+  const configuredRouteCount = routeRows.length - missingTemplateCount;
   const isBusy = status === "extracting" || status === "generating";
-  const canGenerate =
-    selectedCount > 0 &&
-    Boolean(templateFile) &&
-    !isBusy;
+  const canGenerate = selectedCount > 0 && Boolean(templateFile) && !isBusy;
   const templateTitle =
     templateSource === "default"
       ? "サンエスExcelテンプレート"
@@ -92,7 +91,16 @@ export function MainToolPage({
     await loadPdf(file);
     if (useAppStore.getState().commuteEntries.length > 0) {
       setActiveStep(2);
+      setFurthestStep(2);
+    } else {
+      setActiveStep(1);
+      setFurthestStep(1);
     }
+  }
+
+  function advanceTo(step: WorkflowStep) {
+    setFurthestStep((current) => Math.max(current, step) as WorkflowStep);
+    setActiveStep(step);
   }
 
   function openPdfPicker() {
@@ -114,6 +122,7 @@ export function MainToolPage({
       pdfInputRef.current.value = "";
     }
     setActiveStep(1);
+    setFurthestStep(1);
   }
 
   return (
@@ -132,17 +141,20 @@ export function MainToolPage({
         <Step
           active={activeStep === 1}
           available
-          completed={commuteEntries.length > 0 && activeStep !== 1}
+          completed={furthestStep > 1}
           number={1}
           summary={
             commuteEntries.length > 0
               ? `${formatReportDate(reportDate)}・通勤${commuteEntries.length}日`
               : undefined
           }
-          title="PDFを選ぶ"
+          title="Suica利用履歴PDFを選ぶ"
           onOpen={() => setActiveStep(1)}
         >
           <div className="max-w-2xl space-y-4">
+            <p className="text-sm leading-7 text-slate-700">
+              モバイルSuicaの「SF（電子マネー）利用履歴」から保存したPDFを選んでください。
+            </p>
             <button
               className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-5 text-base font-semibold text-white hover:bg-blue-600 disabled:cursor-not-allowed disabled:bg-slate-300 sm:w-auto"
               disabled={isBusy}
@@ -172,13 +184,13 @@ export function MainToolPage({
         <Step
           active={activeStep === 2}
           available={commuteEntries.length > 0}
-          completed={activeStep === 3}
+          completed={furthestStep > 2}
           number={2}
-          summary={activeStep === 3 ? `出力対象 ${selectedCount}日` : undefined}
-          title="内容を確認・入力する"
+          summary={furthestStep > 2 ? `出力対象 ${selectedCount}日` : undefined}
+          title="通勤履歴を確認する"
           onOpen={() => setActiveStep(2)}
         >
-          <div className="space-y-12">
+          <div className="space-y-8">
             <div className="flex flex-col gap-3 rounded-lg bg-slate-100/70 p-4 sm:flex-row sm:items-center sm:justify-between">
               <p className="min-w-0 truncate text-sm text-slate-600">
                 編集中：{pdfFileName || "読み込み済みPDF"}
@@ -191,7 +203,7 @@ export function MainToolPage({
                   onClick={openPdfPicker}
                 >
                   <Upload className="h-4 w-4" />
-                  別のPDFを選択
+                  別のSuica利用履歴PDFを選択
                 </button>
                 <button
                   className="inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm font-medium text-red-700 hover:bg-red-50 disabled:text-slate-400"
@@ -210,7 +222,7 @@ export function MainToolPage({
                 <div>
                   <h3 className="text-lg font-semibold" id="target-days-heading">出力する日</h3>
                   <p className="mt-1 text-sm text-slate-600">
-                    Excelに含める日を選び、日付・経路・金額を確認します。
+                    Excelに含める日を選び、日付・経路・往復交通費を確認します。
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2" aria-label="出力日の一括操作">
@@ -268,180 +280,197 @@ export function MainToolPage({
               </div>
             </section>
 
+            <StepFooter
+              message={selectedCount > 0 ? `${selectedCount}日分を確認しました。` : "出力する日を選択してください。"}
+              buttonLabel="勤務先・社員情報の入力へ"
+              disabled={selectedCount === 0}
+              onNext={() => advanceTo(3)}
+            />
+          </div>
+        </Step>
+
+        <Step
+          active={activeStep === 3}
+          available={furthestStep >= 3 && selectedCount > 0}
+          completed={furthestStep > 3}
+          number={3}
+          summary={
+            furthestStep > 3
+              ? `勤務先 ${configuredRouteCount}/${routeRows.length}経路を設定`
+              : undefined
+          }
+          title="勤務先・社員情報を入力する"
+          onOpen={() => setActiveStep(3)}
+        >
+          <div className="space-y-10">
             <section aria-labelledby="route-information-heading">
               <div>
-                <h3 className="text-lg font-semibold" id="route-information-heading">経路ごとの入力情報</h3>
+                <h3 className="text-lg font-semibold" id="route-information-heading">勤務先情報</h3>
                 <p className="mt-1 text-sm text-slate-600">
                   通勤経路ごとに勤務先テンプレートを選択します。登録がない場合は、この通勤経路から作成してください。
                 </p>
               </div>
 
               {routeRows.length > 0 ? (
-              <div className="mt-5 overflow-x-auto border-y border-slate-200">
-                <table className="w-full min-w-[680px] border-collapse text-sm">
-                  <thead className="bg-slate-100/70 text-left text-xs font-semibold text-slate-600">
-                    <tr>
-                      <th className="w-72 px-4 py-3">通勤経路</th>
-                      <th className="px-4 py-3">勤務先テンプレート</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 bg-white/60">
-                    {routeRows.map((entry) => (
-                      <tr key={entry.routeKey}>
-                        <td className="px-4 py-4 align-top font-medium text-slate-800">{entry.route}</td>
-                        <td className="px-4 py-3 align-top">
-                          <select
-                            aria-label={`${entry.route}の勤務先テンプレート`}
-                            className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 outline-none focus:border-blue-600"
-                            value={entry.companyDataId ?? ""}
-                            onChange={(event) => {
-                              if (event.target.value) {
-                                applyCompanyDataToRoute(entry.routeKey, event.target.value);
-                              } else {
-                                clearCompanyDataSelection(entry.routeKey);
-                              }
-                            }}
-                          >
-                            <option value="">選択しない（空欄で出力）</option>
-                            {companyData.map((record) => (
-                              <option key={record.id} value={record.id}>
-                                {record.companyName}
-                                {record.workLocation ? ` / ${record.workLocation}` : ""}
-                                （{record.commuteRoute}）
-                              </option>
-                            ))}
-                          </select>
-                          {entry.companyDataId ? (
-                            <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50/60 p-4">
-                              <p className="text-xs leading-5 text-slate-600">
-                                今回の出力内容を編集できます。登録済みの勤務先テンプレート本体は変更されません。
-                              </p>
-                              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                                <TextField
-                                  label="会社名"
-                                  value={entry.companyName}
-                                  onChange={(value) => setCommuteRouteField(entry.routeKey, "companyName", value)}
-                                />
-                                <TextField
-                                  label="勤務場所"
-                                  value={entry.workLocation}
-                                  onChange={(value) => setCommuteRouteField(entry.routeKey, "workLocation", value)}
-                                />
-                                <TextField
-                                  label="勤務開始"
-                                  type="time"
-                                  value={entry.startTime}
-                                  onChange={(value) => setCommuteRouteField(entry.routeKey, "startTime", value)}
-                                />
-                                <TextField
-                                  label="勤務終了"
-                                  type="time"
-                                  value={entry.endTime}
-                                  onChange={(value) => setCommuteRouteField(entry.routeKey, "endTime", value)}
-                                />
-                              </div>
-                            </div>
-                          ) : null}
-                          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-                            <span className="text-slate-400">または</span>
-                            <button
-                              className="font-medium text-blue-700 hover:text-blue-900"
-                              type="button"
-                              onClick={() => onOpenCompanyData({
-                                companyName: entry.companyName,
-                                workLocation: entry.workLocation,
-                                commuteRoute: entry.route,
-                                startTime: entry.startTime,
-                                endTime: entry.endTime,
-                              })}
-                            >
-                              この通勤経路から勤務先テンプレートを作成
-                            </button>
-                          </div>
-                        </td>
+                <div className="mt-5 overflow-x-auto border-y border-slate-200">
+                  <table className="w-full min-w-[680px] border-collapse text-sm">
+                    <thead className="bg-slate-100/70 text-left text-xs font-semibold text-slate-600">
+                      <tr>
+                        <th className="w-72 px-4 py-3">通勤経路</th>
+                        <th className="px-4 py-3">勤務先テンプレート</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              ) : (
-                <p className="mt-5 border-y border-slate-200 px-4 py-6 text-sm text-slate-500">
-                  出力対象の日を選択すると、該当する通勤経路が表示されます。
-                </p>
-              )}
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 bg-white/60">
+                      {routeRows.map((entry) => (
+                        <tr key={entry.routeKey}>
+                          <td className="px-4 py-4 align-top font-medium text-slate-800">{entry.route}</td>
+                          <td className="px-4 py-3 align-top">
+                            <select
+                              aria-label={`${entry.route}の勤務先テンプレート`}
+                              className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 outline-none focus:border-blue-600"
+                              value={entry.companyDataId ?? ""}
+                              onChange={(event) => {
+                                if (event.target.value) {
+                                  applyCompanyDataToRoute(entry.routeKey, event.target.value);
+                                } else {
+                                  clearCompanyDataSelection(entry.routeKey);
+                                }
+                              }}
+                            >
+                              <option value="">選択しない（空欄で出力）</option>
+                              {companyData.map((record) => (
+                                <option key={record.id} value={record.id}>
+                                  {record.companyName}
+                                  {record.workLocation ? ` / ${record.workLocation}` : ""}
+                                  （{record.commuteRoute}）
+                                </option>
+                              ))}
+                            </select>
+                            {entry.companyDataId ? (
+                              <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50/60 p-4">
+                                <p className="text-xs leading-5 text-slate-600">
+                                  今回の出力内容を編集できます。登録済みの勤務先テンプレート本体は変更されません。
+                                </p>
+                                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                                  <TextField
+                                    label="会社名"
+                                    value={entry.companyName}
+                                    onChange={(value) => setCommuteRouteField(entry.routeKey, "companyName", value)}
+                                  />
+                                  <TextField
+                                    label="勤務場所"
+                                    value={entry.workLocation}
+                                    onChange={(value) => setCommuteRouteField(entry.routeKey, "workLocation", value)}
+                                  />
+                                  <TextField
+                                    label="勤務開始"
+                                    type="time"
+                                    value={entry.startTime}
+                                    onChange={(value) => setCommuteRouteField(entry.routeKey, "startTime", value)}
+                                  />
+                                  <TextField
+                                    label="勤務終了"
+                                    type="time"
+                                    value={entry.endTime}
+                                    onChange={(value) => setCommuteRouteField(entry.routeKey, "endTime", value)}
+                                  />
+                                </div>
+                              </div>
+                            ) : null}
+                            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                              <span className="text-slate-400">または</span>
+                              <button
+                                className="font-medium text-blue-700 hover:text-blue-900"
+                                type="button"
+                                onClick={() => onOpenCompanyData({
+                                  companyName: entry.companyName,
+                                  workLocation: entry.workLocation,
+                                  commuteRoute: entry.route,
+                                  startTime: entry.startTime,
+                                  endTime: entry.endTime,
+                                })}
+                              >
+                                この通勤経路から勤務先テンプレートを作成
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
 
               {missingTemplateCount > 0 ? (
                 <p className="mt-4 border-l-4 border-amber-500 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950">
                   出力対象の{missingTemplateCount}経路は、会社名・勤務場所・勤務時間が空欄で出力されます。
                 </p>
               ) : null}
-
             </section>
 
-            <div className="flex flex-col gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm text-slate-600">
-                {selectedCount > 0 ? `${selectedCount}日分をExcelへ出力します。` : "出力する日を選択してください。"}
+            <section aria-labelledby="employee-information-heading">
+              <h3 className="text-lg font-semibold" id="employee-information-heading">出力用の社員情報</h3>
+              <p className="mt-1 text-sm text-slate-600">
+                交通費請求書に記載する支社、社員ID、氏名を入力します。同じブラウザでは次回も使用できます。
               </p>
-              <button
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-blue-700 px-5 font-semibold text-white hover:bg-blue-600 disabled:cursor-not-allowed disabled:bg-slate-300"
-                disabled={selectedCount === 0}
-                type="button"
-                onClick={() => setActiveStep(3)}
-              >
-                この内容でExcel作成へ
-                <ChevronRight className="h-5 w-5" />
-              </button>
-            </div>
+              <div className="mt-5 grid gap-4 rounded-xl bg-slate-100/70 p-5 sm:p-6 md:grid-cols-3">
+                <TextField label="支社" value={settings.branch} onChange={(value) => setSetting("branch", value)} />
+                <TextField label="社員ID" value={settings.employeeId} onChange={(value) => setSetting("employeeId", value)} />
+                <TextField label="氏名" value={settings.name} onChange={(value) => setSetting("name", value)} />
+              </div>
+            </section>
+
+            <StepFooter
+              message={`${selectedCount}日分の勤務先・社員情報を確認してください。`}
+              buttonLabel="Excelの作成・保存へ"
+              onNext={() => advanceTo(4)}
+            />
           </div>
         </Step>
 
         <Step
-          active={activeStep === 3}
-          available={activeStep === 3}
+          active={activeStep === 4}
+          available={furthestStep >= 4 && selectedCount > 0}
           completed={generated.length > 0}
-          number={3}
+          number={4}
           summary={generated.length > 0 ? "Excelを作成しました" : undefined}
-          title="Excelを作成する"
-          onOpen={() => setActiveStep(3)}
+          title="Excelを作成・保存する"
+          onOpen={() => setActiveStep(4)}
         >
           <div className="space-y-8">
-            <section aria-labelledby="output-information-heading">
-              <h3 className="text-lg font-semibold" id="output-information-heading">出力情報</h3>
-              <div className="mt-5 rounded-xl bg-slate-100/70 p-5 sm:p-6">
-                <div className="grid gap-4 md:grid-cols-3">
-                  <TextField label="支社" value={settings.branch} onChange={(value) => setSetting("branch", value)} />
-                  <TextField label="社員ID" value={settings.employeeId} onChange={(value) => setSetting("employeeId", value)} />
-                  <TextField label="氏名" value={settings.name} onChange={(value) => setSetting("name", value)} />
-                </div>
-                <div className="mt-6 flex flex-col gap-4 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <FileSpreadsheet className="h-5 w-5 flex-none text-slate-500" />
-                    <div className="min-w-0">
-                      <div className="text-xs font-medium text-slate-500">Excelテンプレート</div>
-                      <div className="mt-1 truncate text-sm font-semibold text-slate-800">{templateTitle}</div>
-                    </div>
+            <section aria-labelledby="excel-template-heading">
+              <h3 className="text-lg font-semibold" id="excel-template-heading">使用するExcelテンプレート</h3>
+              <p className="mt-1 text-sm text-slate-600">
+                通常は最初から用意されているサンエスExcelテンプレートを使用します。
+              </p>
+              <div className="mt-5 flex flex-col gap-4 rounded-xl bg-slate-100/70 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+                <div className="flex min-w-0 items-center gap-3">
+                  <FileSpreadsheet className="h-5 w-5 flex-none text-slate-500" />
+                  <div className="min-w-0">
+                    <div className="text-xs font-medium text-slate-500">Excelテンプレート</div>
+                    <div className="mt-1 truncate text-sm font-semibold text-slate-800">{templateTitle}</div>
                   </div>
-                  <input
-                    ref={templateInputRef}
-                    className="hidden"
-                    type="file"
-                    accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                    onChange={(event) => setTemplateFile(event.target.files?.[0] ?? null)}
-                  />
-                  <button
-                    className="h-10 flex-none rounded-md px-3 text-sm font-medium text-blue-700 hover:bg-blue-50"
-                    type="button"
-                    onClick={() => templateInputRef.current?.click()}
-                  >
-                    テンプレートを変更
-                  </button>
                 </div>
+                <input
+                  ref={templateInputRef}
+                  className="hidden"
+                  type="file"
+                  accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  onChange={(event) => setTemplateFile(event.target.files?.[0] ?? null)}
+                />
+                <button
+                  className="h-10 flex-none rounded-md px-3 text-sm font-medium text-blue-700 hover:bg-blue-50"
+                  type="button"
+                  onClick={() => templateInputRef.current?.click()}
+                >
+                  テンプレートを変更
+                </button>
               </div>
             </section>
 
             {missingInputCount > 0 ? (
               <InlineMessage tone="warning">
-                勤務先テンプレート未選択または入力不足の日が{missingInputCount}日あります。勤務先情報は空欄で出力されます。
+                勤務先テンプレート未選択の日が{missingInputCount}日あります。勤務先情報は空欄で出力されます。
               </InlineMessage>
             ) : null}
 
@@ -453,9 +482,9 @@ export function MainToolPage({
                 onClick={() => void generate()}
               >
                 {status === "generating" ? <Loader2 className="h-5 w-5 animate-spin" /> : <FileSpreadsheet className="h-5 w-5" />}
-                {status === "generating" ? "Excelを作成中" : "交通費請求書Excelを作成"}
+                {status === "generating" ? "Excelを作成中" : "交通費請求書Excelを作成・保存"}
               </button>
-              {status === "error" && activeStep === 3 ? (
+              {status === "error" && activeStep === 4 ? (
                 <div className="mt-4"><InlineMessage tone="error">{message}</InlineMessage></div>
               ) : null}
             </div>
@@ -463,7 +492,7 @@ export function MainToolPage({
             {generated.length > 0 ? (
               <section className="border-t border-blue-200 pt-7" aria-labelledby="generated-heading">
                 <p className="text-sm font-semibold text-blue-700">作成完了</p>
-                <h3 className="mt-1 text-xl font-semibold" id="generated-heading">Excelをダウンロードできます</h3>
+                <h3 className="mt-1 text-xl font-semibold" id="generated-heading">Excelを保存できます</h3>
                 <p className="mt-2 text-sm text-slate-600">
                   {formatReportDate(reportDate)}・{selectedCount}日分の交通費請求書を作成しました。
                 </p>
@@ -476,7 +505,7 @@ export function MainToolPage({
                       onClick={() => downloadWorkbook(workbook)}
                     >
                       <Download className="h-4 w-4" />
-                      {workbook.fileName}をダウンロード
+                      {workbook.fileName}をもう一度保存
                     </button>
                   ))}
                 </div>
@@ -535,6 +564,33 @@ function Step({
       </button>
       {active ? <div className="mt-7 pl-0 sm:pl-13">{children}</div> : null}
     </section>
+  );
+}
+
+function StepFooter({
+  message,
+  buttonLabel,
+  disabled = false,
+  onNext,
+}: {
+  message: string;
+  buttonLabel: string;
+  disabled?: boolean;
+  onNext: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-sm text-slate-600">{message}</p>
+      <button
+        className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-blue-700 px-5 font-semibold text-white hover:bg-blue-600 disabled:cursor-not-allowed disabled:bg-slate-300"
+        disabled={disabled}
+        type="button"
+        onClick={onNext}
+      >
+        {buttonLabel}
+        <ChevronRight className="h-5 w-5" />
+      </button>
+    </div>
   );
 }
 
