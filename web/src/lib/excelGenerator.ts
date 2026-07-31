@@ -8,6 +8,7 @@ import type {
 
 const EXCEL_EPOCH_OFFSET = 25569;
 const MILLISECONDS_PER_DAY = 86_400_000;
+const PRINT_AREA = "A1:AL40";
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"] as const;
 
 export async function generateTimesheets(
@@ -35,6 +36,7 @@ export async function generateTimesheets(
     writeStaticEntries(worksheet, settings);
     writeCommuteEntries(worksheet, group);
     refreshTemplateFormulas(worksheet, year, month);
+    configurePrintLayout(worksheet);
 
     const buffer = await workbook.xlsx.writeBuffer();
     workbooks.push({
@@ -46,6 +48,16 @@ export async function generateTimesheets(
   }
 
   return workbooks;
+}
+
+function configurePrintLayout(worksheet: ExcelJS.Worksheet): void {
+  worksheet.pageSetup.printArea = PRINT_AREA;
+  worksheet.pageSetup.paperSize = 9;
+  worksheet.pageSetup.orientation = "landscape";
+  worksheet.pageSetup.fitToPage = true;
+  worksheet.pageSetup.fitToWidth = 1;
+  worksheet.pageSetup.fitToHeight = 1;
+  delete worksheet.pageSetup.scale;
 }
 
 export function downloadWorkbook(workbook: GeneratedWorkbook): void {

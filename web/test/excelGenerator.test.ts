@@ -42,10 +42,17 @@ describe("Excel generator", () => {
     expect(generated[0]?.fileName).toBe("勤務表_2023-10.xlsx");
 
     const generatedBuffer = await generated[0]!.blob.arrayBuffer();
+    const workbookXml = readZipText(generatedBuffer, "xl/workbook.xml");
     const sheetXml = readZipText(generatedBuffer, "xl/worksheets/sheet1.xml");
-    expect(readZipText(generatedBuffer, "xl/workbook.xml")).toContain(
-      'fullCalcOnLoad="1"',
+    expect(workbookXml).toContain('fullCalcOnLoad="1"');
+    expect(workbookXml).toContain(
+      '<definedName name="_xlnm.Print_Area" localSheetId="0">&apos;勤務表&apos;!$A1:$AL40</definedName>',
     );
+    expect(sheetXml).toMatch(/<pageSetUpPr[^>]*fitToPage="1"[^>]*\/>/);
+    expect(sheetXml).toMatch(
+      /<pageSetup[^>]*paperSize="9"[^>]*orientation="landscape"[^>]*fitToWidth="1"[^>]*fitToHeight="1"[^>]*\/>/,
+    );
+    expect(sheetXml).not.toMatch(/<pageSetup[^>]*\bscale=/);
     expect(sheetXml).toMatch(/<c r="D3"[^>]*><v>45200<\/v><\/c>/);
 
     const workbook = new ExcelJS.Workbook();
@@ -55,6 +62,7 @@ describe("Excel generator", () => {
       throw new Error("勤務表シートが見つかりません。");
     }
 
+    expectOnePagePrintSetup(worksheet);
     expect(serialOf(worksheet.getCell("D3").value)).toBe(45200);
     expect(formulaOf(worksheet.getCell("A30"))).toBe("A29+1");
     expect(serialOf(resultOf(worksheet.getCell("A30")))).toBe(45223);
@@ -105,6 +113,7 @@ describe("Excel generator", () => {
       throw new Error("勤務表シートが見つかりません。");
     }
 
+    expectOnePagePrintSetup(worksheet);
     for (const address of ["C30", "G30", "M30", "O30", "Q30", "S30"]) {
       expect(worksheet.getCell(address).value).toBeNull();
     }
@@ -145,6 +154,17 @@ function defaultSettings(): EmployeeSettings {
     employeeId: "12345",
     name: "太郎 誠",
   };
+}
+
+function expectOnePagePrintSetup(worksheet: ExcelJS.Worksheet): void {
+  expect(worksheet.pageSetup).toMatchObject({
+    printArea: "A1:AL40",
+    paperSize: 9,
+    orientation: "landscape",
+    fitToPage: true,
+    fitToWidth: 1,
+    fitToHeight: 1,
+  });
 }
 
 function formulaOf(cell: ExcelJS.Cell): string | undefined {

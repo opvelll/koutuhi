@@ -496,6 +496,9 @@ export function MainToolPage({
                 <p className="mt-2 text-sm text-slate-600">
                   {formatReportDate(reportDate)}・{selectedCount}日分の交通費請求書を作成しました。
                 </p>
+                <p className="mt-1 text-sm text-slate-600">
+                  A4横・1ページで印刷できるように設定済みです。印刷前にプレビューが1ページになっていることを確認してください。
+                </p>
                 <div className="mt-5 flex flex-col gap-3 sm:items-start">
                   {generated.map((workbook) => (
                     <button
