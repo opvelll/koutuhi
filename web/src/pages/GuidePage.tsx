@@ -260,6 +260,35 @@ export function GuidePage({ onOpenMain }: { onOpenMain: () => void }) {
         </div>
       </GuideSection>
 
+      <GuideSection icon={<ExternalLink className="h-5 w-5" />} title="ご意見・ご要望">
+        <p className="text-sm leading-7 text-slate-700">
+          機能のご要望や不具合の報告は、GitHub（開発用ページ）のIssuesからお知らせください。
+        </p>
+        <a
+          className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-blue-700 hover:text-blue-900 hover:underline"
+          href="https://github.com/opvelll/koutuhi/issues/new/choose"
+          rel="noreferrer"
+          target="_blank"
+        >
+          要望・不具合を報告する
+          <ExternalLink className="h-4 w-4" />
+        </a>
+        <p className="mt-4 text-sm leading-7 text-slate-700">
+          GitHubリポジトリ：
+          <a
+            className="break-all font-medium text-blue-700 hover:text-blue-900 hover:underline"
+            href="https://github.com/opvelll/koutuhi"
+            rel="noreferrer"
+            target="_blank"
+          >
+            https://github.com/opvelll/koutuhi
+          </a>
+        </p>
+        <div className="mt-5 border-l-4 border-amber-500 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950">
+          投稿にはGitHubアカウントが必要で、投稿内容は公開されます。Suica利用履歴PDF、作成したExcel、氏名、社員IDなどの個人情報は、記載・添付しないでください。
+        </div>
+      </GuideSection>
+
       <section className="border-t border-amber-300 bg-amber-50 px-5 py-7 sm:px-6">
         <div className="flex items-start gap-3">
           <AlertTriangle className="mt-0.5 h-5 w-5 flex-none text-amber-800" />
