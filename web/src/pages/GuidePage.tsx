@@ -170,6 +170,7 @@ export function GuidePage({ onOpenMain }: { onOpenMain: () => void }) {
             "作成画面の「Suica利用履歴PDFを選択」を押します。",
             "先ほどモバイルSuicaから保存したPDFを選びます。",
             "読み込みが終わると、対象年月と通勤日が表示され、自動でステップ2へ進みます。",
+            "別のPDFへ変更するときは、ステップ1の「別のSuica利用履歴PDFを選択」を押します。",
           ]}
         />
         <p className="mt-5 border-l-4 border-amber-500 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950">
@@ -235,7 +236,7 @@ export function GuidePage({ onOpenMain }: { onOpenMain: () => void }) {
             支社、社員ID、氏名、勤務先情報は、この端末のブラウザに保存されます。同じ端末・同じブラウザなら、次回も入力内容を使用できます。
           </p>
           <p>
-            別の端末や別のブラウザには引き継がれません。共有端末を使う場合は、作業後に「編集中データをクリア」を押してください。
+            別の端末や別のブラウザには引き継がれません。共有端末を使う場合は、作業後にステップ1の「編集中データをクリア」を押してください。
           </p>
         </div>
       </GuideSection>

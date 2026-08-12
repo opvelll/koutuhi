@@ -143,6 +143,48 @@ export function MainToolPage({
           available
           completed={furthestStep > 1}
           number={1}
+          persistentContent={
+            pdfFileName ? (
+              <div className="flex flex-col gap-3 rounded-lg bg-slate-100/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <p
+                  className="flex min-w-0 items-center gap-2 text-sm text-slate-600"
+                  title={pdfFileName}
+                >
+                  {status === "extracting" ? (
+                    <Loader2 className="h-4 w-4 flex-none animate-spin" />
+                  ) : null}
+                  <span className="truncate">
+                    {status === "extracting"
+                      ? "読み込み中"
+                      : commuteEntries.length > 0
+                        ? "編集中"
+                        : "選択中"}
+                    ：{pdfFileName}
+                  </span>
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    className="inline-flex h-9 items-center gap-2 rounded-md bg-white px-3 text-sm font-medium text-blue-700 shadow-sm hover:bg-blue-50 disabled:cursor-not-allowed disabled:text-slate-400"
+                    disabled={isBusy}
+                    type="button"
+                    onClick={openPdfPicker}
+                  >
+                    <Upload className="h-4 w-4" />
+                    別のSuica利用履歴PDFを選択
+                  </button>
+                  <button
+                    className="inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:text-slate-400"
+                    disabled={isBusy}
+                    type="button"
+                    onClick={handleClearCurrentEditingData}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    編集中データをクリア
+                  </button>
+                </div>
+              </div>
+            ) : undefined
+          }
           summary={
             commuteEntries.length > 0
               ? `${formatReportDate(reportDate)}・通勤${commuteEntries.length}日`
@@ -155,25 +197,16 @@ export function MainToolPage({
             <p className="text-sm leading-7 text-slate-700">
               モバイルSuicaの「SF（電子マネー）利用履歴」から保存したPDFを選んでください。
             </p>
-            <button
-              className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-5 text-base font-semibold text-white hover:bg-blue-600 disabled:cursor-not-allowed disabled:bg-slate-300 sm:w-auto"
-              disabled={isBusy}
-              type="button"
-              onClick={openPdfPicker}
-            >
-              {status === "extracting" ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
+            {!pdfFileName ? (
+              <button
+                className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-blue-700 px-5 text-base font-semibold text-white hover:bg-blue-600 disabled:cursor-not-allowed disabled:bg-slate-300 sm:w-auto"
+                disabled={isBusy}
+                type="button"
+                onClick={openPdfPicker}
+              >
                 <Upload className="h-5 w-5" />
-              )}
-              {status === "extracting"
-                ? "PDFを読み込み中"
-                : commuteEntries.length > 0
-                  ? "別のSuica利用履歴PDFを選択"
-                  : "Suica利用履歴PDFを選択"}
-            </button>
-            {pdfFileName ? (
-              <p className="text-sm text-slate-600">選択中：{pdfFileName}</p>
+                Suica利用履歴PDFを選択
+              </button>
             ) : null}
             {status === "error" && activeStep === 1 ? (
               <InlineMessage tone="error">{message}</InlineMessage>
@@ -191,32 +224,6 @@ export function MainToolPage({
           onOpen={() => setActiveStep(2)}
         >
           <div className="space-y-8">
-            <div className="flex flex-col gap-3 rounded-lg bg-slate-100/70 p-4 sm:flex-row sm:items-center sm:justify-between">
-              <p className="min-w-0 truncate text-sm text-slate-600">
-                編集中：{pdfFileName || "読み込み済みPDF"}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  className="inline-flex h-9 items-center gap-2 rounded-md bg-white px-3 text-sm font-medium text-blue-700 shadow-sm hover:bg-blue-50 disabled:text-slate-400"
-                  disabled={isBusy}
-                  type="button"
-                  onClick={openPdfPicker}
-                >
-                  <Upload className="h-4 w-4" />
-                  別のSuica利用履歴PDFを選択
-                </button>
-                <button
-                  className="inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm font-medium text-red-700 hover:bg-red-50 disabled:text-slate-400"
-                  disabled={isBusy}
-                  type="button"
-                  onClick={handleClearCurrentEditingData}
-                >
-                  <Trash2 className="h-4 w-4" />
-                  編集中データをクリア
-                </button>
-              </div>
-            </div>
-
             <section aria-labelledby="target-days-heading">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div>
@@ -528,6 +535,7 @@ function Step({
   active,
   completed,
   available,
+  persistentContent,
   onOpen,
   children,
 }: {
@@ -537,6 +545,7 @@ function Step({
   active: boolean;
   completed: boolean;
   available: boolean;
+  persistentContent?: ReactNode;
   onOpen: () => void;
   children: ReactNode;
 }) {
@@ -565,7 +574,14 @@ function Step({
         </span>
         {!active && available ? <span className="text-sm font-medium text-blue-700">開く</span> : null}
       </button>
-      {active ? <div className="mt-7 pl-0 sm:pl-13">{children}</div> : null}
+      {persistentContent ? (
+        <div className="mt-4 pl-0 sm:pl-13">{persistentContent}</div>
+      ) : null}
+      {active ? (
+        <div className={persistentContent ? "mt-5 pl-0 sm:pl-13" : "mt-7 pl-0 sm:pl-13"}>
+          {children}
+        </div>
+      ) : null}
     </section>
   );
 }
