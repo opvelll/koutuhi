@@ -29,7 +29,7 @@ import {
   applyFirstMatchingCompanyData,
 } from "../lib/commuteRoutes";
 import { extractSuicaFromPdfFile } from "../lib/pdfTextExtractor";
-import { transformCommute } from "../lib/suicaTransform";
+import { normalizeRouteKey, transformCommute } from "../lib/suicaTransform";
 
 type TemplateSource = "default" | "custom";
 
@@ -52,6 +52,8 @@ type AppState = {
   clearCurrentEditingData: () => void;
   toggleCommuteEntry: (id: string) => void;
   setAllCommuteEntries: (selected: boolean) => void;
+  toggleCommuteFareItem: (entryId: string, itemId: string) => void;
+  setCommuteEntryRoute: (id: string, route: string) => void;
   setCommuteRouteField: (
     routeKey: string,
     key: "companyName" | "workLocation" | "startTime" | "endTime",
@@ -196,6 +198,45 @@ export const useAppStore = create<AppState>((set, get) => ({
   setAllCommuteEntries: (selected) =>
     set((state) => ({
       commuteEntries: state.commuteEntries.map((entry) => ({ ...entry, selected })),
+      generated: [],
+    })),
+
+  toggleCommuteFareItem: (entryId, itemId) =>
+    set((state) => ({
+      commuteEntries: state.commuteEntries.map((entry) => {
+        if (entry.id !== entryId || !entry.fareItems) {
+          return entry;
+        }
+
+        const fareItems = entry.fareItems.map((item) =>
+          item.id === itemId ? { ...item, selected: !item.selected } : item,
+        );
+        const roundTripFare = fareItems.reduce(
+          (total, item) => total + (item.selected ? item.amount : 0),
+          0,
+        );
+
+        return { ...entry, fareItems, roundTripFare };
+      }),
+      generated: [],
+    })),
+
+  setCommuteEntryRoute: (id, route) =>
+    set((state) => ({
+      commuteEntries: state.commuteEntries.map((entry) => {
+        if (entry.id !== id) {
+          return entry;
+        }
+
+        const updated = {
+          ...entry,
+          route,
+          routeKey: normalizeRouteKey(route),
+        };
+        return entry.routeKey === updated.routeKey
+          ? updated
+          : clearWorkplaceFields(updated);
+      }),
       generated: [],
     })),
 

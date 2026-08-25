@@ -20,6 +20,14 @@ const transportKinds = [
 const kindPattern = transportKinds.join("|");
 const yenPattern = "[\\\\¥][\\d,]+";
 
+const busPattern = new RegExp(
+  `^(\\d{1,2})\\s+(\\d{1,2})\\s+` +
+    `(バス等|ﾊﾞｽ等)\\s+` +
+    `(.+?)\\s+` +
+    `(?:(${yenPattern})\\s+)?` +
+    `([+-][\\d,]+)\\s*$`,
+);
+
 const transportPattern = new RegExp(
   `^(\\d{1,2})\\s+(\\d{1,2})\\s+` +
     `(${kindPattern})\\s+` +
@@ -65,6 +73,24 @@ export function parseSuicaHistoryText(lines: string[]): SuicaRecord[] {
   for (const rawLine of lines) {
     const line = rawLine.replace(/^\uFEFF/, "").trim();
     if (!line) {
+      continue;
+    }
+
+    const bus = line.match(busPattern);
+    if (bus) {
+      const [, month, day, type1, operator, balance = "0", amount] = bus;
+      records.push(
+        createRecord(records.length, {
+          month,
+          day,
+          type1: type1.normalize("NFKC"),
+          station1: operator,
+          type2: "",
+          station2: "",
+          balance,
+          amount,
+        }),
+      );
       continue;
     }
 
@@ -180,7 +206,9 @@ function createRecord(index: number, raw: RawRecord): SuicaRecord {
   const day = raw.day.padStart(2, "0");
   const station1 = raw.station1.trim();
   const station2 = raw.station2.trim();
-  const selectable = station1.length > 0 && station2.length > 0;
+  const selectable =
+    (station1.length > 0 && station2.length > 0) ||
+    raw.type1.normalize("NFKC") === "バス等";
 
   return {
     id: `${index}-${month}-${day}-${raw.type1}-${station1}-${station2}`,

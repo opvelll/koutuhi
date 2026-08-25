@@ -184,6 +184,72 @@ describe("PDF loading state", () => {
     expect(useAppStore.getState().commuteEntries.some((entry) => entry.selected)).toBe(false);
   });
 
+  it("updates a default-confirmed route whose bus stops are absent from the PDF", () => {
+    useAppStore.setState({
+      commuteEntries: [{
+        id: "bus-day",
+        date: "2026/06/29",
+        route: "竹ノ塚～仲御徒町 バス（都電都Ｂ）",
+        routeKey: "竹ノ塚～仲御徒町バス(都電都B)",
+        roundTripFare: 922,
+        selected: true,
+        companyName: "既存会社",
+        workLocation: "両国",
+        startTime: "08:30",
+        endTime: "17:30",
+        companyDataId: "company-1",
+      }],
+    });
+
+    useAppStore.getState().setCommuteEntryRoute(
+      "bus-day",
+      "竹ノ塚～仲御徒町～上野松坂屋前（バス）",
+    );
+    expect(useAppStore.getState().commuteEntries[0]).toMatchObject({
+      route: "竹ノ塚～仲御徒町～上野松坂屋前（バス）",
+      routeKey: "竹ノ塚~仲御徒町~上野松坂屋前(バス)",
+      companyDataId: undefined,
+      companyName: "",
+    });
+  });
+
+  it("recalculates the round-trip fare from selected breakdown items", () => {
+    useAppStore.setState({
+      commuteEntries: [{
+        id: "fare-day",
+        date: "2026/06/29",
+        route: "竹ノ塚～両国 バス（都電都Ｂ）",
+        routeKey: "竹ノ塚~両国バス(都電都B)",
+        roundTripFare: 1030,
+        selected: true,
+        companyName: "",
+        workLocation: "",
+        startTime: "",
+        endTime: "",
+        fareItems: [
+          { id: "rail-out", kind: "rail", label: "竹ノ塚 → 両国", amount: 410, selected: true },
+          { id: "bus", kind: "bus", label: "都電都Ｂ", amount: 210, selected: true },
+          { id: "rail-in", kind: "rail", label: "両国 → 竹ノ塚", amount: 410, selected: true },
+        ],
+      }],
+      generated: [{ fileName: "stale.xlsx", blob: new Blob() }],
+    });
+
+    useAppStore.getState().toggleCommuteFareItem("fare-day", "bus");
+
+    expect(useAppStore.getState()).toMatchObject({
+      generated: [],
+      commuteEntries: [{
+        roundTripFare: 820,
+        fareItems: [
+          { id: "rail-out", selected: true },
+          { id: "bus", selected: false },
+          { id: "rail-in", selected: true },
+        ],
+      }],
+    });
+  });
+
   it("clears the current PDF editing data", () => {
     useAppStore.setState({
       status: "ready",

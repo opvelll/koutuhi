@@ -28,6 +28,22 @@ const commuteEntry: CommuteEntry = {
   startTime: "08:30",
   endTime: "17:45",
   companyDataId: "company-1",
+  fareItems: [
+    {
+      id: "outbound",
+      kind: "rail",
+      label: "東京 → 新宿",
+      amount: 210,
+      selected: true,
+    },
+    {
+      id: "inbound",
+      kind: "rail",
+      label: "新宿 → 東京",
+      amount: 210,
+      selected: true,
+    },
+  ],
 };
 
 describe("editing draft storage", () => {

@@ -20,6 +20,14 @@ export type SuicaRecord = {
   selectable: boolean;
 };
 
+export type CommuteFareItem = {
+  id: string;
+  kind: "rail" | "bus";
+  label: string;
+  amount: number;
+  selected: boolean;
+};
+
 export type CommuteEntry = {
   id: string;
   date: string;
@@ -32,6 +40,7 @@ export type CommuteEntry = {
   startTime: string;
   endTime: string;
   companyDataId?: string;
+  fareItems?: CommuteFareItem[];
 };
 
 export type EmployeeSettings = {

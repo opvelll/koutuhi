@@ -1,13 +1,10 @@
-import type { CommuteEntry, SuicaRecord } from "../types";
+import type { CommuteEntry, CommuteFareItem, SuicaRecord } from "../types";
 
 export function transformCommute(records: SuicaRecord[]): CommuteEntry[] {
   const grouped = new Map<string, SuicaRecord[]>();
 
   for (const record of records) {
-    if (!["入", "＊入"].includes(record.type1)) {
-      continue;
-    }
-    if (!record.station1 || !record.station2) {
+    if (!isRailRide(record) && !isBusRide(record)) {
       continue;
     }
 
@@ -17,19 +14,23 @@ export function transformCommute(records: SuicaRecord[]): CommuteEntry[] {
   }
 
   return Array.from(grouped.entries()).map(([date, rows]) => {
-    const route = buildRoute(rows);
+    const railRows = rows.filter(isRailRide);
+    const busRows = rows.filter(isBusRide);
+    const route = buildRoute(railRows, busRows);
+    const fareItems = rows.map(createFareItem);
 
     return {
       id: `${date}:${normalizeRouteKey(route)}`,
       date,
       route,
       routeKey: normalizeRouteKey(route),
-      roundTripFare: rows.reduce((total, row) => total + Math.abs(row.amount), 0),
+      roundTripFare: fareItems.reduce((total, item) => total + item.amount, 0),
       selected: true,
       companyName: "",
       workLocation: "",
       startTime: "",
       endTime: "",
+      fareItems,
     };
   });
 }
@@ -38,11 +39,11 @@ export function normalizeRouteKey(route: string): string {
   return route.normalize("NFKC").replace(/\s+/g, "").trim();
 }
 
-function buildRoute(rows: SuicaRecord[]): string {
+function buildRoute(railRows: SuicaRecord[], busRows: SuicaRecord[]): string {
   const seen = new Set<string>();
   const pairs: Array<[string, string]> = [];
 
-  for (const row of rows) {
+  for (const row of railRows) {
     const a = row.station1.trim();
     const b = row.station2.trim();
     const key = [a, b].sort().join("\0");
@@ -78,5 +79,38 @@ function buildRoute(rows: SuicaRecord[]): string {
     segments.push(current);
   }
 
-  return segments.map((segment) => segment.join("～")).join(" ");
+  const railRoute = segments.map((segment) => segment.join("～")).join(" ");
+  const busOperators = Array.from(new Set(
+    busRows.map((row) => row.station1.trim()).filter(Boolean),
+  ));
+  const busRoute = busOperators.length > 0
+    ? `バス（${busOperators.join("・")}）`
+    : busRows.length > 0
+      ? "バス"
+      : "";
+
+  return [railRoute, busRoute].filter(Boolean).join(" ");
+}
+
+function isRailRide(record: SuicaRecord): boolean {
+  return ["入", "＊入"].includes(record.type1) &&
+    Boolean(record.station1 && record.station2);
+}
+
+function isBusRide(record: SuicaRecord): boolean {
+  return record.type1.normalize("NFKC") === "バス等";
+}
+
+function createFareItem(record: SuicaRecord): CommuteFareItem {
+  const bus = isBusRide(record);
+
+  return {
+    id: record.id,
+    kind: bus ? "bus" : "rail",
+    label: bus
+      ? record.station1 || "バス"
+      : `${record.station1} → ${record.station2}`,
+    amount: Math.abs(record.amount),
+    selected: true,
+  };
 }

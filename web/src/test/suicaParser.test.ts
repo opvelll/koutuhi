@@ -48,19 +48,33 @@ describe("Suica history parser", () => {
     const route = "竹ノ塚～地　入谷";
     const routeKey = normalizeRouteKey(route);
 
-    expect(transformCommute(records)).toEqual([
-      {
-        id: `2023/10/24:${routeKey}`,
-        date: "2023/10/24",
-        route,
-        routeKey,
-        roundTripFare: 712,
+    const [commute] = transformCommute(records);
+
+    expect(commute).toMatchObject({
+      id: `2023/10/24:${routeKey}`,
+      date: "2023/10/24",
+      route,
+      routeKey,
+      roundTripFare: 712,
+      selected: true,
+      companyName: "",
+      workLocation: "",
+      startTime: "",
+      endTime: "",
+    });
+    expect(commute.fareItems).toEqual([
+      expect.objectContaining({
+        kind: "rail",
+        label: "竹ノ塚 → 地　入谷",
+        amount: 356,
         selected: true,
-        companyName: "",
-        workLocation: "",
-        startTime: "",
-        endTime: "",
-      },
+      }),
+      expect.objectContaining({
+        kind: "rail",
+        label: "地　入谷 → 竹ノ塚",
+        amount: 356,
+        selected: true,
+      }),
     ]);
   });
 
@@ -110,7 +124,7 @@ describe("Suica history parser", () => {
     ]);
   });
 
-  it("parses non-transport rows without selecting them for commuting", () => {
+  it("adds a bus-only row to commuting and ignores other non-transport rows", () => {
     const records = addYearToDates(
       parseSuicaHistoryText([
         "06 25 現金 +1,000",
@@ -128,7 +142,59 @@ describe("Suica history parser", () => {
       "2026/06/29",
       "2026/07/08",
     ]);
-    expect(records.every((record) => !record.selectable)).toBe(true);
-    expect(transformCommute(records)).toEqual([]);
+    expect(records.map((record) => record.selectable)).toEqual([
+      false,
+      false,
+      true,
+      false,
+    ]);
+    expect(transformCommute(records)).toEqual([
+      {
+        id: "2026/06/29:バス(都電都B)",
+        date: "2026/06/29",
+        route: "バス（都電都Ｂ）",
+        routeKey: "バス(都電都B)",
+        roundTripFare: 210,
+        selected: true,
+        companyName: "",
+        workLocation: "",
+        startTime: "",
+        endTime: "",
+        fareItems: [
+          expect.objectContaining({
+            kind: "bus",
+            label: "都電都Ｂ",
+            amount: 210,
+            selected: true,
+          }),
+        ],
+      },
+    ]);
+  });
+
+  it("includes the bus fare in the attached PDF day's commute total", () => {
+    const records = addYearToDates(
+      parseSuicaHistoryText([
+        "06 29 入 竹ノ塚 出 仲御徒町 -356",
+        "06 29 ＊入 上御徒町 出 都　両国 -108",
+        "06 29 バス等 都電都Ｂ -210",
+        "06 29 入 仲御徒町 出 竹ノ塚 -356",
+      ]),
+      "2026/8/25",
+    );
+
+    expect(transformCommute(records)).toMatchObject([
+      {
+        date: "2026/06/29",
+        route: "竹ノ塚～仲御徒町 上御徒町～都　両国 バス（都電都Ｂ）",
+        roundTripFare: 1030,
+        fareItems: [
+          { kind: "rail", label: "竹ノ塚 → 仲御徒町", amount: 356, selected: true },
+          { kind: "rail", label: "上御徒町 → 都　両国", amount: 108, selected: true },
+          { kind: "bus", label: "都電都Ｂ", amount: 210, selected: true },
+          { kind: "rail", label: "仲御徒町 → 竹ノ塚", amount: 356, selected: true },
+        ],
+      },
+    ]);
   });
 });

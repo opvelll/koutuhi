@@ -1,5 +1,6 @@
 import {
   CheckSquare,
+  ChevronDown,
   ChevronRight,
   Download,
   FileSpreadsheet,
@@ -14,7 +15,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { groupSelectedCommuteEntriesByRoute } from "../lib/commuteRoutes";
 import { downloadWorkbook } from "../lib/excelGenerator";
 import { useAppStore } from "../store/useAppStore";
-import type { CompanyDataInput } from "../types";
+import type { CommuteEntry, CompanyDataInput } from "../types";
 
 type WorkflowStep = 1 | 2 | 3 | 4;
 
@@ -48,6 +49,8 @@ export function MainToolPage({
     setSetting,
     toggleCommuteEntry,
     setAllCommuteEntries,
+    toggleCommuteFareItem,
+    setCommuteEntryRoute,
     setCommuteRouteField,
     applyCompanyDataToRoute,
     clearCompanyDataSelection,
@@ -63,6 +66,9 @@ export function MainToolPage({
     [commuteEntries],
   );
   const selectedCount = selectedEntries.length;
+  const emptyRouteCount = selectedEntries.filter(
+    (entry) => !entry.route.trim(),
+  ).length;
   const missingTemplateCount = new Set(
     selectedEntries
       .filter((entry) => !entry.companyDataId)
@@ -229,7 +235,7 @@ export function MainToolPage({
                 <div>
                   <h3 className="text-lg font-semibold" id="target-days-heading">出力する日</h3>
                   <p className="mt-1 text-sm text-slate-600">
-                    Excelに含める日を選び、日付・経路・往復交通費を確認します。
+                    Excelに含める日を選び、日付・経路・往復交通費を確認します。経路は必要に応じて修正できます。
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2" aria-label="出力日の一括操作">
@@ -255,7 +261,47 @@ export function MainToolPage({
                 </div>
               </div>
 
-              <div className="mt-5 overflow-x-auto border-y border-slate-200">
+              <div className="mt-5 grid gap-3 sm:hidden">
+                {commuteEntries.map((entry) => (
+                  <article
+                    className={
+                      entry.selected
+                        ? "rounded-xl border border-slate-200 bg-white p-4"
+                        : "rounded-xl border border-slate-200 bg-slate-50 p-4 text-slate-400"
+                    }
+                    key={`mobile-${entry.id}`}
+                  >
+                    <div className="flex items-center justify-between gap-4">
+                      <label className="flex items-center gap-3 font-semibold">
+                        <input
+                          aria-label={`${formatDate(entry.date)}を出力対象にする`}
+                          className="h-4 w-4 rounded border-slate-300 text-blue-700"
+                          checked={entry.selected}
+                          type="checkbox"
+                          onChange={() => toggleCommuteEntry(entry.id)}
+                        />
+                        {formatDate(entry.date)}
+                      </label>
+                      <span className="font-semibold tabular-nums">
+                        {formatYen(entry.roundTripFare)}
+                      </span>
+                    </div>
+                    <div className="mt-4">
+                      <RouteEditor
+                        entry={entry}
+                        inputId={`mobile-route-${entry.id}`}
+                        onChange={setCommuteEntryRoute}
+                      />
+                      <FareBreakdown
+                        entry={entry}
+                        onToggle={toggleCommuteFareItem}
+                      />
+                    </div>
+                  </article>
+                ))}
+              </div>
+
+              <div className="mt-5 hidden overflow-x-auto border-y border-slate-200 sm:block">
                 <table className="w-full min-w-[680px] border-collapse text-sm">
                   <thead className="bg-slate-100/70 text-left text-xs font-semibold text-slate-600">
                     <tr>
@@ -278,7 +324,17 @@ export function MainToolPage({
                           />
                         </td>
                         <td className="whitespace-nowrap px-4 py-3">{formatDate(entry.date)}</td>
-                        <td className="px-4 py-3">{entry.route}</td>
+                        <td className="px-4 py-3">
+                          <RouteEditor
+                            entry={entry}
+                            inputId={`desktop-route-${entry.id}`}
+                            onChange={setCommuteEntryRoute}
+                          />
+                          <FareBreakdown
+                            entry={entry}
+                            onToggle={toggleCommuteFareItem}
+                          />
+                        </td>
                         <td className="px-4 py-3 text-right tabular-nums">{formatYen(entry.roundTripFare)}</td>
                       </tr>
                     ))}
@@ -288,9 +344,15 @@ export function MainToolPage({
             </section>
 
             <StepFooter
-              message={selectedCount > 0 ? `${selectedCount}日分を確認しました。` : "出力する日を選択してください。"}
+              message={
+                selectedCount === 0
+                  ? "出力する日を選択してください。"
+                  : emptyRouteCount > 0
+                    ? `選択した日のうち${emptyRouteCount}日分の経路を入力してください。`
+                    : `${selectedCount}日分を確認しました。`
+              }
               buttonLabel="勤務先・社員情報の入力へ"
-              disabled={selectedCount === 0}
+              disabled={selectedCount === 0 || emptyRouteCount > 0}
               onNext={() => advanceTo(3)}
             />
           </div>
@@ -648,6 +710,117 @@ function TextField({
         onChange={(event) => onChange(event.target.value)}
       />
     </label>
+  );
+}
+
+function RouteEditor({
+  entry,
+  inputId,
+  onChange,
+}: {
+  entry: CommuteEntry;
+  inputId: string;
+  onChange: (id: string, route: string) => void;
+}) {
+  const routeIsEmpty = !entry.route.trim();
+
+  return (
+    <div>
+      <label
+        className="mb-2 block text-xs font-semibold text-slate-600 sm:sr-only"
+        htmlFor={inputId}
+      >
+        通勤経路
+      </label>
+      <textarea
+        id={inputId}
+        aria-label={`${formatDate(entry.date)}の通勤経路`}
+        aria-invalid={routeIsEmpty}
+        className={
+          routeIsEmpty
+            ? "min-h-20 w-full min-w-0 resize-y rounded-md border border-amber-400 bg-amber-50 px-3 py-2 leading-6 text-slate-950 outline-none focus:border-amber-600 sm:min-h-16 sm:min-w-72"
+            : "min-h-20 w-full min-w-0 resize-y rounded-md border border-slate-300 bg-white px-3 py-2 leading-6 text-slate-950 outline-none focus:border-blue-600 sm:min-h-16 sm:min-w-72"
+        }
+        rows={2}
+        value={entry.route}
+        onChange={(event) => onChange(entry.id, event.target.value)}
+      />
+      {entry.fareItems?.some((item) => item.kind === "bus") ? (
+        <p className="mt-1 text-xs leading-5 text-slate-500">
+          バスの乗降停留所はPDFにないため、必要な場合だけ経路を修正してください。
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function FareBreakdown({
+  entry,
+  onToggle,
+}: {
+  entry: CommuteEntry;
+  onToggle: (entryId: string, itemId: string) => void;
+}) {
+  const fareItems = entry.fareItems ?? [];
+  if (fareItems.length === 0) {
+    return null;
+  }
+
+  const selectedItemCount = fareItems.reduce(
+    (count, item) => count + (item.selected ? 1 : 0),
+    0,
+  );
+
+  return (
+    <details open className="group mt-3 rounded-lg border border-slate-200 bg-slate-50/70 text-slate-700">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 text-sm font-semibold marker:content-none [&::-webkit-details-marker]:hidden">
+        <span>
+          運賃内訳
+          <span className="ml-2 font-normal text-slate-500">
+            {selectedItemCount}/{fareItems.length}件
+          </span>
+        </span>
+        <ChevronDown className="h-4 w-4 flex-none transition-transform group-open:rotate-180" />
+      </summary>
+      <div className="border-t border-slate-200 px-3 py-3">
+        <p className="mb-3 text-xs leading-5 text-slate-500">
+          チェックした利用分の合計が往復交通費に反映されます。
+        </p>
+        <div className="grid gap-2">
+          {fareItems.map((item) => (
+            <label
+              className={
+                item.selected
+                  ? "grid cursor-pointer grid-cols-[auto_auto_minmax(0,1fr)_auto] items-start gap-2 rounded-md bg-white px-3 py-2 text-sm"
+                  : "grid cursor-pointer grid-cols-[auto_auto_minmax(0,1fr)_auto] items-start gap-2 rounded-md bg-white px-3 py-2 text-sm text-slate-400"
+              }
+              key={item.id}
+            >
+              <input
+                aria-label={`${formatDate(entry.date)}の${item.label}を交通費に含める`}
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-700"
+                checked={item.selected}
+                type="checkbox"
+                onChange={() => onToggle(entry.id, item.id)}
+              />
+              <span
+                className={
+                  item.kind === "bus"
+                    ? "rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold text-amber-900"
+                    : "rounded bg-blue-50 px-1.5 py-0.5 text-[11px] font-semibold text-blue-800"
+                }
+              >
+                {item.kind === "bus" ? "バス" : "鉄道"}
+              </span>
+              <span className="min-w-0 leading-5">{item.label}</span>
+              <span className="whitespace-nowrap font-medium tabular-nums">
+                {formatYen(item.amount)}
+              </span>
+            </label>
+          ))}
+        </div>
+      </div>
+    </details>
   );
 }
 
