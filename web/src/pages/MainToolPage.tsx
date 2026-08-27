@@ -261,17 +261,17 @@ export function MainToolPage({
                 </div>
               </div>
 
-              <div className="mt-5 grid gap-3 sm:hidden">
+              <div className="mt-5 grid gap-4 sm:hidden">
                 {commuteEntries.map((entry) => (
                   <article
                     className={
                       entry.selected
-                        ? "rounded-xl border border-slate-200 bg-white p-4"
-                        : "rounded-xl border border-slate-200 bg-slate-50 p-4 text-slate-400"
+                        ? "rounded-xl border-2 border-slate-300 bg-white p-4 shadow-sm"
+                        : "rounded-xl border-2 border-slate-300 bg-slate-100 p-4 text-slate-500 shadow-sm"
                     }
                     key={`mobile-${entry.id}`}
                   >
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center justify-between gap-4 border-b border-slate-200 pb-3">
                       <label className="flex items-center gap-3 font-semibold">
                         <input
                           aria-label={`${formatDate(entry.date)}を出力対象にする`}
@@ -286,7 +286,7 @@ export function MainToolPage({
                         {formatYen(entry.roundTripFare)}
                       </span>
                     </div>
-                    <div className="mt-4">
+                    <div className="pt-4">
                       <RouteEditor
                         entry={entry}
                         inputId={`mobile-route-${entry.id}`}
@@ -301,7 +301,7 @@ export function MainToolPage({
                 ))}
               </div>
 
-              <div className="mt-5 hidden overflow-x-auto border-y border-slate-200 sm:block">
+              <div className="mt-5 hidden overflow-x-auto rounded-xl border border-slate-300 sm:block">
                 <table className="w-full min-w-[680px] border-collapse text-sm">
                   <thead className="bg-slate-100/70 text-left text-xs font-semibold text-slate-600">
                     <tr>
@@ -311,9 +311,16 @@ export function MainToolPage({
                       <th className="w-32 px-4 py-3 text-right">往復交通費</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 bg-white/60">
+                  <tbody className="divide-y-2 divide-slate-300">
                     {commuteEntries.map((entry) => (
-                      <tr className={entry.selected ? "" : "text-slate-400"} key={entry.id}>
+                      <tr
+                        className={
+                          entry.selected
+                            ? "odd:bg-white even:bg-slate-50/80"
+                            : "bg-slate-100 text-slate-500"
+                        }
+                        key={entry.id}
+                      >
                         <td className="px-4 py-3">
                           <input
                             aria-label={`${formatDate(entry.date)}を出力対象にする`}
@@ -323,7 +330,9 @@ export function MainToolPage({
                             onChange={() => toggleCommuteEntry(entry.id)}
                           />
                         </td>
-                        <td className="whitespace-nowrap px-4 py-3">{formatDate(entry.date)}</td>
+                        <td className="whitespace-nowrap px-4 py-3 font-semibold">
+                          {formatDate(entry.date)}
+                        </td>
                         <td className="px-4 py-3">
                           <RouteEditor
                             entry={entry}
