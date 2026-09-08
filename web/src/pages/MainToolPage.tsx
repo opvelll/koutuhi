@@ -62,6 +62,7 @@ export function MainToolPage({
     [commuteEntries],
   );
   const selectedCount = selectedEntries.length;
+  const hasSelectedCompanyData = selectedEntries.some((entry) => Boolean(entry.companyDataId));
   const missingInputCount = selectedEntries.filter(
     (entry) => !entry.companyDataId,
   ).length;
@@ -373,45 +374,60 @@ export function MainToolPage({
                 <p className="mt-1 text-sm text-slate-600">
                   日付ごとに勤務先テンプレートを選択し、経路・料金・勤務先情報を確認できます。空欄の経路や料金はテンプレートから補完されます。
                 </p>
+                <p className="mt-2 text-xs leading-5 text-slate-500">
+                  横にスクロールして勤務先情報を確認できます。今回の編集は登録済み勤務先テンプレート本体を変更しません。
+                </p>
               </div>
 
               {selectedEntries.length > 0 ? (
-                <div className="mt-5 overflow-x-auto border-y border-slate-200">
-                  <table className="w-full min-w-[980px] border-collapse text-sm">
+                <div className="relative isolate mt-5 overflow-x-auto rounded-xl border border-slate-300">
+                  <table className={hasSelectedCompanyData ? "w-full min-w-[1740px] border-collapse text-sm" : "w-full min-w-[980px] border-collapse text-sm"}>
                     <thead className="bg-slate-100/70 text-left text-xs font-semibold text-slate-600">
                       <tr>
-                        <th className="w-32 px-4 py-3">日付</th>
-                        <th className="w-[28rem] px-4 py-3">通勤経路</th>
-                        <th className="w-36 px-4 py-3">1日往復料金</th>
-                        <th className="px-4 py-3">勤務先テンプレート・勤務先情報</th>
+                        <th className="sticky left-0 z-20 w-32 min-w-32 bg-slate-100/95 px-4 py-3">日付</th>
+                        <th className="w-[34rem] min-w-[34rem] px-4 py-3">通勤経路</th>
+                        <th className="w-[18rem] min-w-[18rem] px-4 py-3">勤務先テンプレート</th>
+                        <th className="w-36 min-w-36 px-4 py-3">1日往復料金</th>
+                        {hasSelectedCompanyData ? (
+                          <>
+                            <th className="w-56 min-w-56 px-4 py-3">会社名</th>
+                            <th className="w-56 min-w-56 px-4 py-3">勤務場所</th>
+                            <th className="w-36 min-w-36 px-4 py-3">勤務開始</th>
+                            <th className="w-36 min-w-36 px-4 py-3">勤務終了</th>
+                          </>
+                        ) : null}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 bg-white/60">
+                    <tbody className="divide-y divide-slate-200 bg-white">
                       {selectedEntries.map((entry) => (
-                        <tr key={entry.id}>
-                          <td className="whitespace-nowrap px-4 py-4 align-top font-medium text-slate-800">{formatDate(entry.date)}</td>
-                          <td className="px-4 py-3 align-top">
-                            <RouteEditor
-                              entry={entry}
-                              inputId={`company-route-${entry.id}`}
-                              onChange={setCommuteEntryRoute}
-                            />
+                        <tr className="odd:bg-white even:bg-slate-50/60" key={entry.id}>
+                          <td className="sticky left-0 z-10 whitespace-nowrap bg-white px-4 py-4 align-top font-medium text-slate-800">
+                            {formatDate(entry.date)}
                           </td>
                           <td className="px-4 py-3 align-top">
-                            <label className="grid gap-2 text-xs font-semibold text-slate-600" htmlFor={`company-fare-${entry.id}`}>
-                              料金（円）
-                              <input
-                                id={`company-fare-${entry.id}`}
-                                aria-label={`${formatDate(entry.date)}の1日往復料金`}
-                                className="h-10 w-32 rounded-md border border-slate-300 bg-white px-3 text-right text-sm font-normal text-slate-950 outline-none focus:border-blue-600"
-                                min={0}
-                                step={1}
-                                type="number"
-                                value={entry.roundTripFare}
-                                onChange={(event) => setCommuteEntryFare(entry.id, Number(event.target.value))}
-                              />
-                            </label>
-                            <p className="mt-2 text-xs text-slate-500">{formatYen(entry.roundTripFare)}</p>
+                            <div className="flex min-w-0 items-start gap-2">
+                              <div className="min-w-0 flex-1">
+                                <RouteEditor
+                                  entry={entry}
+                                  inputId={`company-route-${entry.id}`}
+                                  onChange={setCommuteEntryRoute}
+                                />
+                              </div>
+                              <button
+                                className="mt-0.5 inline-flex h-10 flex-none items-center justify-center rounded-md border border-blue-200 bg-blue-50 px-3 text-xs font-semibold text-blue-800 hover:bg-blue-100"
+                                type="button"
+                                onClick={() => onOpenCompanyData({
+                                  companyName: entry.companyName,
+                                  workLocation: entry.workLocation,
+                                  commuteRoute: entry.route,
+                                  startTime: entry.startTime,
+                                  endTime: entry.endTime,
+                                  roundTripFare: entry.roundTripFare,
+                                })}
+                              >
+                                テンプレート作成
+                              </button>
+                            </div>
                           </td>
                           <td className="px-4 py-3 align-top">
                             <select
@@ -436,55 +452,66 @@ export function MainToolPage({
                                 </option>
                               ))}
                             </select>
-                            {entry.companyDataId ? (
-                              <div className="mt-4 rounded-lg border border-blue-100 bg-blue-50/60 p-4">
-                                <p className="text-xs leading-5 text-slate-600">
-                                  今回の出力内容を編集できます。登録済みの勤務先テンプレート本体は変更されません。
-                                </p>
-                                <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                                  <TextField
-                                    label="会社名"
+                          </td>
+                          <td className="px-4 py-3 align-top">
+                            <label className="grid gap-2 text-xs font-semibold text-slate-600" htmlFor={`company-fare-${entry.id}`}>
+                              <span className="sr-only">料金（円）</span>
+                              <input
+                                id={`company-fare-${entry.id}`}
+                                aria-label={`${formatDate(entry.date)}の1日往復料金`}
+                                className="h-10 w-32 rounded-md border border-slate-300 bg-white px-3 text-right text-sm font-normal text-slate-950 outline-none focus:border-blue-600"
+                                min={0}
+                                step={1}
+                                type="number"
+                                value={entry.roundTripFare}
+                                onChange={(event) => setCommuteEntryFare(entry.id, Number(event.target.value))}
+                              />
+                            </label>
+                            <p className="mt-2 text-xs text-slate-500">{formatYen(entry.roundTripFare)}</p>
+                          </td>
+                          {hasSelectedCompanyData ? (
+                            entry.companyDataId ? (
+                              <>
+                                <td className="px-4 py-3 align-top">
+                                  <CompactTextField
+                                    label={`${formatDate(entry.date)}の会社名`}
                                     value={entry.companyName}
                                     onChange={(value) => setCommuteEntryField(entry.id, "companyName", value)}
                                   />
-                                  <TextField
-                                    label="勤務場所"
+                                </td>
+                                <td className="px-4 py-3 align-top">
+                                  <CompactTextField
+                                    label={`${formatDate(entry.date)}の勤務場所`}
                                     value={entry.workLocation}
                                     onChange={(value) => setCommuteEntryField(entry.id, "workLocation", value)}
                                   />
-                                  <TextField
-                                    label="勤務開始"
+                                </td>
+                                <td className="px-4 py-3 align-top">
+                                  <CompactTextField
+                                    label={`${formatDate(entry.date)}の勤務開始`}
                                     type="time"
                                     value={entry.startTime}
                                     onChange={(value) => setCommuteEntryField(entry.id, "startTime", value)}
                                   />
-                                  <TextField
-                                    label="勤務終了"
+                                </td>
+                                <td className="px-4 py-3 align-top">
+                                  <CompactTextField
+                                    label={`${formatDate(entry.date)}の勤務終了`}
                                     type="time"
                                     value={entry.endTime}
                                     onChange={(value) => setCommuteEntryField(entry.id, "endTime", value)}
                                   />
-                                </div>
-                              </div>
-                            ) : null}
-                            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-                              <span className="text-slate-400">または</span>
-                              <button
-                                className="font-medium text-blue-700 hover:text-blue-900"
-                                type="button"
-                                onClick={() => onOpenCompanyData({
-                                  companyName: entry.companyName,
-                                  workLocation: entry.workLocation,
-                                  commuteRoute: entry.route,
-                                  startTime: entry.startTime,
-                                  endTime: entry.endTime,
-                                  roundTripFare: entry.roundTripFare,
-                                })}
-                              >
-                                この日の情報から勤務先テンプレートを作成
-                              </button>
-                            </div>
-                          </td>
+                                </td>
+                              </>
+                            ) : (
+                              <>
+                                <td className="px-4 py-4 align-top text-center text-slate-400">—</td>
+                                <td className="px-4 py-4 align-top text-center text-slate-400">—</td>
+                                <td className="px-4 py-4 align-top text-center text-slate-400">—</td>
+                                <td className="px-4 py-4 align-top text-center text-slate-400">—</td>
+                              </>
+                            )
+                          ) : null}
                         </tr>
                       ))}
                     </tbody>
@@ -727,6 +754,31 @@ function TextField({
       {label}
       <input
         className="h-11 rounded-lg border border-slate-300 bg-white px-3 font-normal text-slate-950 outline-none focus:border-blue-600"
+        type={type}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </label>
+  );
+}
+
+function CompactTextField({
+  label,
+  type = "text",
+  value,
+  onChange,
+}: {
+  label: string;
+  type?: "text" | "time";
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="sr-only">{label}</span>
+      <input
+        aria-label={label}
+        className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-950 outline-none focus:border-blue-600"
         type={type}
         value={value}
         onChange={(event) => onChange(event.target.value)}
