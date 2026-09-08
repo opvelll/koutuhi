@@ -74,4 +74,32 @@ describe("editing draft storage", () => {
 
     expect(loadEditingDraft(storage)).toBeNull();
   });
+
+  it("restores a bus-only draft with an empty route", () => {
+    const storage = createStorage();
+    const busEntry = {
+      ...commuteEntry,
+      id: "bus-day",
+      date: "2026/07/02",
+      route: "",
+      routeKey: "",
+      roundTripFare: 210,
+      companyDataId: undefined,
+      fareItems: [{
+        id: "bus-fare",
+        kind: "bus" as const,
+        label: "都電都Ｂ",
+        amount: 210,
+        selected: true,
+      }],
+    };
+
+    saveEditingDraft({
+      pdfFileName: "bus-history.pdf",
+      reportDate: "2026/07/31",
+      commuteEntries: [busEntry],
+    }, storage);
+
+    expect(loadEditingDraft(storage)?.commuteEntries[0]).toEqual(busEntry);
+  });
 });

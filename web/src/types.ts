@@ -55,6 +55,7 @@ export type CompanyDataInput = {
   commuteRoute: string;
   startTime: string;
   endTime: string;
+  roundTripFare?: number | null;
 };
 
 export type CompanyData = CompanyDataInput & {

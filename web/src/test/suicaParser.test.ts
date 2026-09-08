@@ -150,10 +150,10 @@ describe("Suica history parser", () => {
     ]);
     expect(transformCommute(records)).toEqual([
       {
-        id: "2026/06/29:バス(都電都B)",
+        id: "2026/06/29:",
         date: "2026/06/29",
-        route: "バス（都電都Ｂ）",
-        routeKey: "バス(都電都B)",
+        route: "",
+        routeKey: "",
         roundTripFare: 210,
         selected: true,
         companyName: "",

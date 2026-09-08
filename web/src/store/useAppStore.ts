@@ -54,6 +54,12 @@ type AppState = {
   setAllCommuteEntries: (selected: boolean) => void;
   toggleCommuteFareItem: (entryId: string, itemId: string) => void;
   setCommuteEntryRoute: (id: string, route: string) => void;
+  setCommuteEntryFare: (id: string, fare: number) => void;
+  setCommuteEntryField: (
+    id: string,
+    key: "companyName" | "workLocation" | "startTime" | "endTime",
+    value: string,
+  ) => void;
   setCommuteRouteField: (
     routeKey: string,
     key: "companyName" | "workLocation" | "startTime" | "endTime",
@@ -62,7 +68,9 @@ type AppState = {
   saveCompanyDataEntry: (input: CompanyDataInput, id?: string) => string;
   deleteCompanyDataEntry: (id: string) => void;
   applyCompanyDataToRoute: (routeKey: string, companyDataId: string) => void;
+  applyCompanyDataToEntry: (entryId: string, companyDataId: string) => void;
   clearCompanyDataSelection: (routeKey: string) => void;
+  clearCompanyDataSelectionForEntry: (entryId: string) => void;
   generate: () => Promise<void>;
 };
 
@@ -240,6 +248,24 @@ export const useAppStore = create<AppState>((set, get) => ({
       generated: [],
     })),
 
+  setCommuteEntryFare: (id, fare) =>
+    set((state) => ({
+      commuteEntries: state.commuteEntries.map((entry) =>
+        entry.id === id
+          ? { ...entry, roundTripFare: Number.isFinite(fare) && fare >= 0 ? Math.round(fare) : 0 }
+          : entry,
+      ),
+      generated: [],
+    })),
+
+  setCommuteEntryField: (id, key, value) =>
+    set((state) => ({
+      commuteEntries: state.commuteEntries.map((entry) =>
+        entry.id === id ? { ...entry, [key]: value } : entry,
+      ),
+      generated: [],
+    })),
+
   setCommuteRouteField: (routeKey, key, value) =>
     set((state) => ({
       commuteEntries: state.commuteEntries.map((entry) =>
@@ -312,6 +338,21 @@ export const useAppStore = create<AppState>((set, get) => ({
       return { commuteEntries, generated: [] };
     }),
 
+  applyCompanyDataToEntry: (entryId, companyDataId) =>
+    set((state) => {
+      const selected = state.companyData.find((record) => record.id === companyDataId);
+      if (!selected) {
+        return {};
+      }
+
+      return {
+        commuteEntries: state.commuteEntries.map((entry) =>
+          entry.id === entryId ? applyCompanyData(entry, selected) : entry,
+        ),
+        generated: [],
+      };
+    }),
+
   clearCompanyDataSelection: (routeKey) =>
     set((state) => {
       const commuteEntries = state.commuteEntries.map((entry) =>
@@ -322,6 +363,14 @@ export const useAppStore = create<AppState>((set, get) => ({
 
       return { commuteEntries, generated: [] };
     }),
+
+  clearCompanyDataSelectionForEntry: (entryId) =>
+    set((state) => ({
+      commuteEntries: state.commuteEntries.map((entry) =>
+        entry.id === entryId ? clearWorkplaceFields(entry) : entry,
+      ),
+      generated: [],
+    })),
 
   generate: async () => {
     const { commuteEntries, templateFile, settings } = get();

@@ -12,7 +12,6 @@ import {
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { groupSelectedCommuteEntriesByRoute } from "../lib/commuteRoutes";
 import { downloadWorkbook } from "../lib/excelGenerator";
 import { useAppStore } from "../store/useAppStore";
 import type { CommuteEntry, CompanyDataInput } from "../types";
@@ -51,9 +50,10 @@ export function MainToolPage({
     setAllCommuteEntries,
     toggleCommuteFareItem,
     setCommuteEntryRoute,
-    setCommuteRouteField,
-    applyCompanyDataToRoute,
-    clearCompanyDataSelection,
+    setCommuteEntryFare,
+    setCommuteEntryField,
+    applyCompanyDataToEntry,
+    clearCompanyDataSelectionForEntry,
     generate,
   } = useAppStore();
 
@@ -61,23 +61,11 @@ export function MainToolPage({
     () => commuteEntries.filter((entry) => entry.selected),
     [commuteEntries],
   );
-  const routeRows = useMemo(
-    () => groupSelectedCommuteEntriesByRoute(commuteEntries),
-    [commuteEntries],
-  );
   const selectedCount = selectedEntries.length;
-  const emptyRouteCount = selectedEntries.filter(
-    (entry) => !entry.route.trim(),
-  ).length;
-  const missingTemplateCount = new Set(
-    selectedEntries
-      .filter((entry) => !entry.companyDataId)
-      .map((entry) => entry.routeKey),
-  ).size;
   const missingInputCount = selectedEntries.filter(
     (entry) => !entry.companyDataId,
   ).length;
-  const configuredRouteCount = routeRows.length - missingTemplateCount;
+  const configuredDateCount = selectedCount - missingInputCount;
   const isBusy = status === "extracting" || status === "generating";
   const canGenerate = selectedCount > 0 && Boolean(templateFile) && !isBusy;
   const templateTitle =
@@ -356,12 +344,10 @@ export function MainToolPage({
               message={
                 selectedCount === 0
                   ? "出力する日を選択してください。"
-                  : emptyRouteCount > 0
-                    ? `選択した日のうち${emptyRouteCount}日分の経路を入力してください。`
-                    : `${selectedCount}日分を確認しました。`
+                  : `${selectedCount}日分を確認しました。経路が空欄の日は、ステップ3でテンプレートから補完できます。`
               }
               buttonLabel="勤務先・社員情報の入力へ"
-              disabled={selectedCount === 0 || emptyRouteCount > 0}
+              disabled={selectedCount === 0}
               onNext={() => advanceTo(3)}
             />
           </div>
@@ -374,7 +360,7 @@ export function MainToolPage({
           number={3}
           summary={
             furthestStep > 3
-              ? `勤務先 ${configuredRouteCount}/${routeRows.length}経路を設定`
+              ? `勤務先 ${configuredDateCount}/${selectedCount}日を設定`
               : undefined
           }
           title="勤務先・社員情報を入力する"
@@ -385,33 +371,58 @@ export function MainToolPage({
               <div>
                 <h3 className="text-lg font-semibold" id="route-information-heading">勤務先情報</h3>
                 <p className="mt-1 text-sm text-slate-600">
-                  通勤経路ごとに勤務先テンプレートを選択します。登録がない場合は、この通勤経路から作成してください。
+                  日付ごとに勤務先テンプレートを選択し、経路・料金・勤務先情報を確認できます。空欄の経路や料金はテンプレートから補完されます。
                 </p>
               </div>
 
-              {routeRows.length > 0 ? (
+              {selectedEntries.length > 0 ? (
                 <div className="mt-5 overflow-x-auto border-y border-slate-200">
-                  <table className="w-full min-w-[680px] border-collapse text-sm">
+                  <table className="w-full min-w-[980px] border-collapse text-sm">
                     <thead className="bg-slate-100/70 text-left text-xs font-semibold text-slate-600">
                       <tr>
-                        <th className="w-72 px-4 py-3">通勤経路</th>
-                        <th className="px-4 py-3">勤務先テンプレート</th>
+                        <th className="w-32 px-4 py-3">日付</th>
+                        <th className="w-[28rem] px-4 py-3">通勤経路</th>
+                        <th className="w-36 px-4 py-3">1日往復料金</th>
+                        <th className="px-4 py-3">勤務先テンプレート・勤務先情報</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 bg-white/60">
-                      {routeRows.map((entry) => (
-                        <tr key={entry.routeKey}>
-                          <td className="px-4 py-4 align-top font-medium text-slate-800">{entry.route}</td>
+                      {selectedEntries.map((entry) => (
+                        <tr key={entry.id}>
+                          <td className="whitespace-nowrap px-4 py-4 align-top font-medium text-slate-800">{formatDate(entry.date)}</td>
+                          <td className="px-4 py-3 align-top">
+                            <RouteEditor
+                              entry={entry}
+                              inputId={`company-route-${entry.id}`}
+                              onChange={setCommuteEntryRoute}
+                            />
+                          </td>
+                          <td className="px-4 py-3 align-top">
+                            <label className="grid gap-2 text-xs font-semibold text-slate-600" htmlFor={`company-fare-${entry.id}`}>
+                              料金（円）
+                              <input
+                                id={`company-fare-${entry.id}`}
+                                aria-label={`${formatDate(entry.date)}の1日往復料金`}
+                                className="h-10 w-32 rounded-md border border-slate-300 bg-white px-3 text-right text-sm font-normal text-slate-950 outline-none focus:border-blue-600"
+                                min={0}
+                                step={1}
+                                type="number"
+                                value={entry.roundTripFare}
+                                onChange={(event) => setCommuteEntryFare(entry.id, Number(event.target.value))}
+                              />
+                            </label>
+                            <p className="mt-2 text-xs text-slate-500">{formatYen(entry.roundTripFare)}</p>
+                          </td>
                           <td className="px-4 py-3 align-top">
                             <select
-                              aria-label={`${entry.route}の勤務先テンプレート`}
+                              aria-label={`${formatDate(entry.date)}の勤務先テンプレート`}
                               className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 outline-none focus:border-blue-600"
                               value={entry.companyDataId ?? ""}
                               onChange={(event) => {
                                 if (event.target.value) {
-                                  applyCompanyDataToRoute(entry.routeKey, event.target.value);
+                                  applyCompanyDataToEntry(entry.id, event.target.value);
                                 } else {
-                                  clearCompanyDataSelection(entry.routeKey);
+                                  clearCompanyDataSelectionForEntry(entry.id);
                                 }
                               }}
                             >
@@ -420,6 +431,7 @@ export function MainToolPage({
                                 <option key={record.id} value={record.id}>
                                   {record.companyName}
                                   {record.workLocation ? ` / ${record.workLocation}` : ""}
+                                  {record.roundTripFare != null ? ` / ${formatYen(record.roundTripFare)}` : ""}
                                   （{record.commuteRoute}）
                                 </option>
                               ))}
@@ -433,24 +445,24 @@ export function MainToolPage({
                                   <TextField
                                     label="会社名"
                                     value={entry.companyName}
-                                    onChange={(value) => setCommuteRouteField(entry.routeKey, "companyName", value)}
+                                    onChange={(value) => setCommuteEntryField(entry.id, "companyName", value)}
                                   />
                                   <TextField
                                     label="勤務場所"
                                     value={entry.workLocation}
-                                    onChange={(value) => setCommuteRouteField(entry.routeKey, "workLocation", value)}
+                                    onChange={(value) => setCommuteEntryField(entry.id, "workLocation", value)}
                                   />
                                   <TextField
                                     label="勤務開始"
                                     type="time"
                                     value={entry.startTime}
-                                    onChange={(value) => setCommuteRouteField(entry.routeKey, "startTime", value)}
+                                    onChange={(value) => setCommuteEntryField(entry.id, "startTime", value)}
                                   />
                                   <TextField
                                     label="勤務終了"
                                     type="time"
                                     value={entry.endTime}
-                                    onChange={(value) => setCommuteRouteField(entry.routeKey, "endTime", value)}
+                                    onChange={(value) => setCommuteEntryField(entry.id, "endTime", value)}
                                   />
                                 </div>
                               </div>
@@ -466,9 +478,10 @@ export function MainToolPage({
                                   commuteRoute: entry.route,
                                   startTime: entry.startTime,
                                   endTime: entry.endTime,
+                                  roundTripFare: entry.roundTripFare,
                                 })}
                               >
-                                この通勤経路から勤務先テンプレートを作成
+                                この日の情報から勤務先テンプレートを作成
                               </button>
                             </div>
                           </td>
@@ -479,9 +492,9 @@ export function MainToolPage({
                 </div>
               ) : null}
 
-              {missingTemplateCount > 0 ? (
+              {missingInputCount > 0 ? (
                 <p className="mt-4 border-l-4 border-amber-500 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-950">
-                  出力対象の{missingTemplateCount}経路は、会社名・勤務場所・勤務時間が空欄で出力されます。
+                  出力対象の{missingInputCount}日分は、勤務先テンプレート未選択のため会社名・勤務場所・勤務時間が空欄で出力されます。
                 </p>
               ) : null}
             </section>
@@ -731,8 +744,6 @@ function RouteEditor({
   inputId: string;
   onChange: (id: string, route: string) => void;
 }) {
-  const routeIsEmpty = !entry.route.trim();
-
   return (
     <div>
       <label
@@ -744,19 +755,14 @@ function RouteEditor({
       <textarea
         id={inputId}
         aria-label={`${formatDate(entry.date)}の通勤経路`}
-        aria-invalid={routeIsEmpty}
-        className={
-          routeIsEmpty
-            ? "min-h-20 w-full min-w-0 resize-y rounded-md border border-amber-400 bg-amber-50 px-3 py-2 leading-6 text-slate-950 outline-none focus:border-amber-600 sm:min-h-16 sm:min-w-72"
-            : "min-h-20 w-full min-w-0 resize-y rounded-md border border-slate-300 bg-white px-3 py-2 leading-6 text-slate-950 outline-none focus:border-blue-600 sm:min-h-16 sm:min-w-72"
-        }
+        className="min-h-20 w-full min-w-0 resize-y rounded-md border border-slate-300 bg-white px-3 py-2 leading-6 text-slate-950 outline-none focus:border-blue-600 sm:min-h-16 sm:min-w-72"
         rows={2}
         value={entry.route}
         onChange={(event) => onChange(entry.id, event.target.value)}
       />
       {entry.fareItems?.some((item) => item.kind === "bus") ? (
         <p className="mt-1 text-xs leading-5 text-slate-500">
-          バスの乗降停留所はPDFにないため、必要な場合だけ経路を修正してください。
+          バスの乗降停留所はPDFにないため、空欄のまま進めるか、テンプレートから補完できます。
         </p>
       ) : null}
     </div>

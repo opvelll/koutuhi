@@ -386,4 +386,69 @@ describe("PDF loading state", () => {
       }),
     ]);
   });
+
+  it("applies a template to one date without changing another date", () => {
+    useAppStore.setState({
+      companyData: [{
+        id: "company-bus",
+        companyName: "バス勤務先",
+        workLocation: "本社",
+        commuteRoute: "駅前 ～ 本社前",
+        startTime: "08:30",
+        endTime: "17:30",
+        roundTripFare: 380,
+      }],
+      commuteEntries: [
+        {
+          id: "bus-day-1",
+          date: "2026/07/01",
+          route: "",
+          routeKey: "",
+          roundTripFare: 0,
+          selected: true,
+          companyName: "",
+          workLocation: "",
+          startTime: "",
+          endTime: "",
+        },
+        {
+          id: "bus-day-2",
+          date: "2026/07/02",
+          route: "",
+          routeKey: "",
+          roundTripFare: 210,
+          selected: true,
+          companyName: "",
+          workLocation: "",
+          startTime: "",
+          endTime: "",
+        },
+      ],
+    });
+
+    useAppStore.getState().applyCompanyDataToEntry("bus-day-1", "company-bus");
+
+    expect(useAppStore.getState().commuteEntries).toEqual([
+      expect.objectContaining({
+        id: "bus-day-1",
+        route: "駅前 ～ 本社前",
+        roundTripFare: 380,
+        companyDataId: "company-bus",
+        companyName: "バス勤務先",
+      }),
+      expect.objectContaining({
+        id: "bus-day-2",
+        route: "",
+        roundTripFare: 210,
+      }),
+    ]);
+
+    useAppStore.getState().clearCompanyDataSelectionForEntry("bus-day-1");
+    expect(useAppStore.getState().commuteEntries[0]).toMatchObject({
+      route: "駅前 ～ 本社前",
+      roundTripFare: 380,
+      companyDataId: undefined,
+      companyName: "",
+    });
+  });
 });

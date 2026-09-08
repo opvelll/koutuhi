@@ -20,6 +20,7 @@ describe("workplace template storage", () => {
       commuteRoute: "東京  →  新宿",
       startTime: "08:30",
       endTime: "17:45",
+      roundTripFare: 420,
     }, "company-1");
 
     saveCompanyData(result.records, storage);
@@ -32,6 +33,7 @@ describe("workplace template storage", () => {
         commuteRoute: "東京  →  新宿",
         startTime: "08:30",
         endTime: "17:45",
+        roundTripFare: 420,
       }),
     ]);
   });
@@ -53,6 +55,23 @@ describe("workplace template storage", () => {
         id: "company-blank-location",
         workLocation: "",
       }),
+    ]);
+  });
+
+  it("keeps older templates usable when no fare is stored", () => {
+    const storage = createStorage({
+      "koutuhi.companyData.v1": JSON.stringify([{
+        id: "company-old",
+        companyName: "旧テンプレート",
+        workLocation: "本社",
+        commuteRoute: "東京→新宿",
+        startTime: "08:30",
+        endTime: "17:30",
+      }]),
+    });
+
+    expect(loadCompanyData(storage)).toEqual([
+      expect.objectContaining({ id: "company-old", roundTripFare: null }),
     ]);
   });
 });

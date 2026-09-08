@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  applyCompanyData,
   applyFirstMatchingCompanyData,
   groupCommuteEntriesByRoute,
   groupSelectedCommuteEntriesByRoute,
@@ -94,5 +95,37 @@ describe("groupCommuteEntriesByRoute", () => {
       }),
       entries[1],
     ]);
+  });
+
+  it("fills only missing route and fare values when applying a template", () => {
+    const template = {
+      id: "company-bus",
+      companyName: "バス会社",
+      workLocation: "本社",
+      commuteRoute: "駅前 ～ 本社前",
+      startTime: "08:30",
+      endTime: "17:30",
+      roundTripFare: 380,
+    };
+
+    expect(applyCompanyData({
+      ...entry("1", "", ""),
+      roundTripFare: 0,
+    }, template)).toMatchObject({
+      route: "駅前 ～ 本社前",
+      routeKey: "駅前~本社前",
+      roundTripFare: 380,
+      companyDataId: "company-bus",
+    });
+
+    expect(applyCompanyData({
+      ...entry("2", "東京→新宿", "東京 → 新宿"),
+      roundTripFare: 420,
+    }, template)).toMatchObject({
+      route: "東京 → 新宿",
+      routeKey: "東京→新宿",
+      roundTripFare: 420,
+      companyDataId: "company-bus",
+    });
   });
 });

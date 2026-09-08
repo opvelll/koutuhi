@@ -16,7 +16,7 @@ export function transformCommute(records: SuicaRecord[]): CommuteEntry[] {
   return Array.from(grouped.entries()).map(([date, rows]) => {
     const railRows = rows.filter(isRailRide);
     const busRows = rows.filter(isBusRide);
-    const route = buildRoute(railRows, busRows);
+    const route = railRows.length === 0 ? "" : buildRoute(railRows, busRows);
     const fareItems = rows.map(createFareItem);
 
     return {

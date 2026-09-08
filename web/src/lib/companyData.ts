@@ -35,6 +35,7 @@ export function loadCompanyData(storage?: StorageLike | null): CompanyData[] {
       commuteRoute,
       startTime: readString(value.startTime),
       endTime: readString(value.endTime),
+      roundTripFare: readOptionalFare(value.roundTripFare),
     }];
   });
 }
@@ -58,6 +59,7 @@ export function upsertCompanyData(
     commuteRoute: input.commuteRoute.trim(),
     startTime: input.startTime,
     endTime: input.endTime,
+    roundTripFare: normalizeFare(input.roundTripFare),
   };
   const existingIndex = records.findIndex((record) => record.id === saved.id);
   const next = [...records];
@@ -80,4 +82,16 @@ export function removeCompanyData(records: CompanyData[], id: string): CompanyDa
 
 function createId(): string {
   return globalThis.crypto?.randomUUID?.() ?? `company-${Date.now()}`;
+}
+
+function readOptionalFare(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0
+    ? value
+    : null;
+}
+
+function normalizeFare(value: number | null | undefined): number | null {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0
+    ? Math.round(value)
+    : null;
 }

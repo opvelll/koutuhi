@@ -11,6 +11,11 @@ export function applyCompanyData(
     workLocation: companyData.workLocation,
     startTime: companyData.startTime,
     endTime: companyData.endTime,
+    route: entry.route.trim() ? entry.route : companyData.commuteRoute,
+    routeKey: entry.routeKey || normalizeRouteKey(companyData.commuteRoute),
+    roundTripFare: entry.roundTripFare > 0
+      ? entry.roundTripFare
+      : companyData.roundTripFare ?? entry.roundTripFare,
     companyDataId: companyData.id,
   };
 }

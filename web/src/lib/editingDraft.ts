@@ -60,7 +60,7 @@ function readCommuteEntry(value: unknown): CommuteEntry[] {
   const date = readString(value.date);
   const route = readString(value.route);
   const routeKey = readString(value.routeKey);
-  if (!id || !date || !route || !routeKey) {
+  if (!id || !date) {
     return [];
   }
 

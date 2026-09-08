@@ -10,6 +10,7 @@ const emptyInput: CompanyDataInput = {
   commuteRoute: "",
   startTime: "",
   endTime: "",
+  roundTripFare: null,
 };
 
 export function CompanyDataPage({
@@ -28,7 +29,10 @@ export function CompanyDataPage({
       : "",
   );
 
-  function updateField(key: keyof CompanyDataInput, value: string) {
+  function updateField(
+    key: keyof CompanyDataInput,
+    value: string | number | null,
+  ) {
     setInput((current) => ({ ...current, [key]: value }));
     setMessage("");
   }
@@ -54,6 +58,7 @@ export function CompanyDataPage({
       commuteRoute: record.commuteRoute,
       startTime: record.startTime,
       endTime: record.endTime,
+      roundTripFare: record.roundTripFare ?? null,
     });
     setMessage("");
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -82,7 +87,7 @@ export function CompanyDataPage({
             <h2 className="text-2xl font-semibold tracking-tight">勤務先テンプレート</h2>
           </div>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-            申請時に繰り返し使う会社名、勤務場所、通勤経路、勤務時刻を登録します。
+            申請時に繰り返し使う会社名、勤務場所、通勤経路、1日往復料金、勤務時刻を登録します。
           </p>
         </div>
         <button
@@ -129,6 +134,13 @@ export function CompanyDataPage({
             value={input.commuteRoute}
             placeholder="例：幕張本郷駅 ～ 千葉駅"
             onChange={(value) => updateField("commuteRoute", value)}
+          />
+          <CompanyField
+            label="1日往復料金（円）"
+            type="number"
+            min={0}
+            value={input.roundTripFare == null ? "" : String(input.roundTripFare)}
+            onChange={(value) => updateField("roundTripFare", value === "" ? null : Number(value))}
           />
           <div className="grid gap-5 sm:grid-cols-2">
             <CompanyField
@@ -212,6 +224,12 @@ export function CompanyDataPage({
                     <dd className="mt-1 text-slate-800">{record.commuteRoute}</dd>
                   </div>
                   <div>
+                    <dt className="text-xs font-medium text-slate-500">1日往復料金</dt>
+                    <dd className="mt-1 text-slate-800">
+                      {record.roundTripFare == null ? "未設定" : formatYen(record.roundTripFare)}
+                    </dd>
+                  </div>
+                  <div>
                     <dt className="text-xs font-medium text-slate-500">勤務開始</dt>
                     <dd className="mt-1 text-slate-800">{record.startTime || "未設定"}</dd>
                   </div>
@@ -233,13 +251,15 @@ function CompanyField({
   label,
   value,
   type = "text",
+  min,
   placeholder,
   required = false,
   onChange,
 }: {
   label: string;
   value: string;
-  type?: "text" | "time";
+  type?: "text" | "time" | "number";
+  min?: number;
   placeholder?: string;
   required?: boolean;
   onChange: (value: string) => void;
@@ -252,9 +272,14 @@ function CompanyField({
         placeholder={placeholder}
         required={required}
         type={type}
+        min={min}
         value={value}
         onChange={(event) => onChange(event.target.value)}
       />
     </label>
   );
+}
+
+function formatYen(value: number): string {
+  return `${value.toLocaleString("ja-JP")}円`;
 }
